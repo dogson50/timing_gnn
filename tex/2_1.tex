@@ -1,0 +1,65 @@
+\documentclass{ctexart}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{xcolor}
+\geometry{a4paper, margin=1in}
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single
+}
+\title{2\_1 修改记录}
+\date{2026-02-02}
+
+\begin{document}
+\maketitle
+
+\section{train\_base\_pt\_ft.py 改造为 cell delay 训练}
+\subsection{修改内容概述}
+\begin{itemize}
+  \item 用 dataset.pkl（由 build\_dataset 生成）替代原先 path/CNN 数据读取。
+  \item 删除 path/CNN 相关逻辑，训练改为 ``数值特征 + HGAT embedding'' 的 cell-level 回归。
+  \item 保留 ``预训练 + 微调'' 训练流程：预训练使用 src\_df（若存在），微调使用 tgt\_train\_df。
+  \item 增加 HGAT embedding 预计算：源域用 src\_spi\_by\_cell，目标域用 tgt\_subckt\_by\_cell。
+\end{itemize}
+
+\subsection{修改前后对比（数据加载）}
+\textbf{修改前：}读取设计级 pkl + path/CNN 数据。
+\begin{lstlisting}
+train_data_save_path = DATA_SAVE_PATH[options.train_node]
+train_dataset = load_data(train_data_save_path, 'train', ...)
+val_dataset = load_data(test_data_save_path, 'test', ...)
+\end{lstlisting}
+
+\textbf{修改后：}读取 dataset.pkl 的 DataFrame。
+\begin{lstlisting}
+obj = load_dataset_pkl(data_dir, options.dataset_pkl_name)
+df_src = obj.get("src_df")
+df_tgt_train = obj.get("tgt_train_df")
+df_tgt_val = obj.get("tgt_val_df")
+pretrain_ds = CellDelayDataset(pretrain_df, x_mean, x_std, y_mean, y_std)
+finetune_ds = CellDelayDataset(finetune_df, x_mean, x_std, y_mean, y_std)
+val_ds = CellDelayDataset(val_df, x_mean, x_std, y_mean, y_std)
+\end{lstlisting}
+
+\subsection{修改前后对比（模型与训练）}
+\textbf{修改前：}PathConv + CNN + PathModel。
+\begin{lstlisting}
+model = PathModel(gnn, fcn, mlp)
+cur_label_hats = model(graph, nodes, eids, targets, level_id, path_map)
+\end{lstlisting}
+
+\textbf{修改后：}HGAT + MLP 回归（cell-level）。
+\begin{lstlisting}
+enc = HGATDesignEncoder(...)
+model = CellDelayRegressor(in_dim=options.in_dim, design_dim=design_dim, ...)
+zb = th.cat([z_provider(ct) for ct in cts], dim=0)
+pred = model(xb, zb)
+\end{lstlisting}
+
+\subsection{新增参数说明}
+\begin{itemize}
+  \item \texttt{--pretrain\_epochs}：预训练轮数，0 表示使用 \texttt{num\_epoch // 2}。
+\end{itemize}
+
+\end{document}

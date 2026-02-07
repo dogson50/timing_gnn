@@ -1,0 +1,54 @@
+\documentclass{ctexart}
+\usepackage{geometry}
+\usepackage{listings}
+\geometry{a4paper, margin=1in}
+\lstset{basicstyle=\ttfamily\small, breaklines=true, frame=single}
+\title{2\_2 修改记录}
+\date{2026-02-02}
+\begin{document}
+\maketitle
+
+\section{train\_balanced\_sampling.py 改造为 cell delay 平衡采样}
+\subsection{修改内容概述}
+\begin{itemize}
+  \item 用 dataset.pkl（由 build\_dataset 生成）替代原先 path/CNN 数据读取。
+  \item 删除 path/CNN 逻辑，训练改为 ``数值特征 + HGAT embedding'' 的 cell-level 回归。
+  \item 保留 ``平衡采样'' 思路：每个 batch 同时采样 7nm 与 45nm（src\_df），按权重混合损失。
+  \item 迁移场景改为 45nm \rightarrow 7nm：参数与日志统一从 130 改为 45。
+\end{itemize}
+
+\subsection{修改前后对比（数据加载）}
+\textbf{修改前：}读取设计级 pkl + path/CNN 数据。
+\begin{lstlisting}
+train_dataset_7 = load_data(...)
+train_dataset_130 = load_data(...)
+val_dataset = load_data(...)
+\end{lstlisting}
+
+\textbf{修改后：}读取 dataset.pkl 的 DataFrame。
+\begin{lstlisting}
+obj = load_dataset_pkl(data_dir, options.dataset_pkl_name)
+df_7 = obj.get("tgt_train_df")
+df_45 = obj.get("src_df")
+\end{lstlisting}
+
+\subsection{修改前后对比（模型与训练）}
+\textbf{修改前：}PathConv + CNN + PathModel。
+\begin{lstlisting}
+cur_label_hats = model(graph, nodes, eids, targets, level_id, path_map)
+\end{lstlisting}
+
+\textbf{修改后：}HGAT + MLP 回归（cell-level）。
+\begin{lstlisting}
+enc = HGATDesignEncoder(...)
+model = CellDelayRegressor(...)
+pred = model(xb, zb)
+\end{lstlisting}
+
+\subsection{参数改名（130nm \rightarrow 45nm）}
+\begin{lstlisting}
+--sample_130_num  ->  --sample_45_num
+--loss_weight_130 ->  --loss_weight_45
+\end{lstlisting}
+
+\end{document}
