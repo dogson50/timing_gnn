@@ -118,6 +118,85 @@ def extract_subckt_text(sp_text: str, subckt_name: str) -> str:
     return "".join(buf) if buf else ""
 
 
+def build_tgt_graph_cache(data_dir, meta, device):
+    mapping = meta.get("tgt_subckt_by_cell", {})
+    if not mapping:
+        print("[Warn] meta has no tgt_subckt_by_cell")
+        return {}
+
+    tgt_spice = meta.get("tgt_sp_file", "")
+    if not tgt_spice:
+        print("[Warn] meta has no tgt_sp_file")
+        return {}
+
+    if not os.path.exists(tgt_spice):
+        cand = os.path.join(data_dir, tgt_spice)
+        if os.path.exists(cand):
+            tgt_spice = cand
+        else:
+            raise FileNotFoundError(f"Target SPICE not found: {tgt_spice}")
+
+    print(f"[Info] Parsing Target SPICE: {tgt_spice}")
+    sp_text = open(tgt_spice, "r", encoding="utf-8", errors="ignore").read()
+
+    graph_cache = {}
+    for ctype, sub_name in mapping.items():
+        sub_txt = extract_subckt_text(sp_text, sub_name)
+        if not sub_txt:
+            continue
+        devs = parse_transistors_spice(sub_txt)
+        _, pins = parse_top_subckt_pins(sub_txt)
+        if not devs:
+            continue
+        g, feats, _ = build_dgl_graph_from_devs(devs, pins)
+        graph_cache[str(ctype)] = (g.to(device), {k: v.to(device) for k, v in feats.items()})
+    print(f"[Info] Cached target graphs: {len(graph_cache)}")
+    return graph_cache
+
+
+def build_z_batch(cts, device, design_dim, *, z_dict=None, graph_cache=None, enc=None, dedup=False):
+    if z_dict is None and (graph_cache is None or enc is None):
+        raise ValueError("build_z_batch requires z_dict or (graph_cache + enc).")
+
+    def _get_z(ct):
+        key = str(ct)
+        if z_dict is not None:
+            z = z_dict.get(key)
+            if z is None:
+                return th.zeros(1, design_dim, device=device)
+            return z
+        entry = graph_cache.get(key) if graph_cache is not None else None
+        if entry is None:
+            return th.zeros(1, design_dim, device=device)
+        g, feats = entry
+        z = enc(g, feats)
+        if z.dim() == 1:
+            z = z.unsqueeze(0)
+        return z
+
+    if dedup:
+        seen = {}
+        uniq = []
+        idx_map = []
+        for ct in cts:
+            key = str(ct)
+            idx = seen.get(key)
+            if idx is None:
+                idx = len(uniq)
+                seen[key] = idx
+                uniq.append(key)
+            idx_map.append(idx)
+        if not uniq:
+            return th.zeros((0, design_dim), device=device)
+        z_unique = th.cat([_get_z(ct) for ct in uniq], dim=0)
+        index = th.tensor(idx_map, device=device, dtype=th.long)
+        return z_unique.index_select(0, index)
+
+    if len(cts) == 0:
+        return th.zeros((0, design_dim), device=device)
+    return th.cat([_get_z(ct) for ct in cts], dim=0)
+
+
 def precompute_z_from_tgt_spice(data_dir, meta, enc, device, design_dim):
     mapping = meta.get("tgt_subckt_by_cell", {})
     if not mapping:
@@ -213,23 +292,31 @@ def train(options, seed):
     model = CellDelayRegressor(in_dim=options.in_dim, design_dim=design_dim, hid=hgat_hid, dropout=dropout).to(device)
 
     print("----------------Loading HGAT embeddings----------------")
-    z_dict = precompute_z_from_tgt_spice(data_dir, meta, enc, device, design_dim)
-
-    def z_provider(ct):
-        z = z_dict.get(ct)
-        if z is None:
-            return th.zeros(1, design_dim, device=device)
-        return z
-
-    optimizer = th.optim.Adam(list(enc.parameters()) + list(model.parameters()),
-                              lr=options.learning_rate, weight_decay=options.weight_decay)
+    z_dict = None
+    graph_cache = None
+    if options.freeze_hgat:
+        print("[Info] freeze_hgat=True, precomputing z")
+        z_dict = precompute_z_from_tgt_spice(data_dir, meta, enc, device, design_dim)
+        for p in enc.parameters():
+            p.requires_grad = False
+        enc.eval()
+        optimizer = th.optim.Adam(model.parameters(),
+                                  lr=options.learning_rate, weight_decay=options.weight_decay)
+    else:
+        print("[Info] freeze_hgat=False, building graph cache")
+        graph_cache = build_tgt_graph_cache(data_dir, meta, device)
+        optimizer = th.optim.Adam(list(enc.parameters()) + list(model.parameters()),
+                                  lr=options.learning_rate, weight_decay=options.weight_decay)
     loss_fn = nn.MSELoss()
     r2_score = R2Score().to(device)
 
     print("----------------Start training---------------")
     best_val = float("inf")
     for epoch in range(options.num_epoch):
-        enc.train()
+        if options.freeze_hgat:
+            enc.eval()
+        else:
+            enc.train()
         model.train()
         train_loss = 0.0
         train_n = 0
@@ -237,7 +324,11 @@ def train(options, seed):
         for xb, yb, cts in train_dl:
             xb = xb.to(device)
             yb = yb.to(device)
-            zb = th.cat([z_provider(ct) for ct in cts], dim=0)
+            zb = build_z_batch(
+                cts, device, design_dim,
+                z_dict=z_dict, graph_cache=graph_cache, enc=enc,
+                dedup=options.dedup_z
+            )
 
             optimizer.zero_grad()
             pred = model(xb, zb)
@@ -260,7 +351,11 @@ def train(options, seed):
             for xb, yb, cts in val_dl:
                 xb = xb.to(device)
                 yb = yb.to(device)
-                zb = th.cat([z_provider(ct) for ct in cts], dim=0)
+                zb = build_z_batch(
+                    cts, device, design_dim,
+                    z_dict=z_dict, graph_cache=graph_cache, enc=enc,
+                    dedup=options.dedup_z
+                )
                 pred = model(xb, zb)
                 loss = loss_fn(pred, yb)
                 val_loss += loss.item() * len(yb)

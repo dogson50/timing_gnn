@@ -68,3 +68,23 @@ Key options (see options.py for full list):
 
     --sample_45_num 1
     --loss_weight_45 1.0
+
+## Training (HGAT + dual MLP heads, balanced sampling src/tgt)
+Go to directory './src', and execute:
+
+    python train_balanced_sampling_sep_mlp.py --model_saving_dir PATH_MODEL --data_save_path PATH_OUT --dataset_pkl_name dataset.pkl
+
+Notes:
+
+- Separate MLP heads for target and source domains (tgt/src).
+- Target uses tgt_train_df; source uses src_df (fallback to tgt_train_df if src_df missing).
+- Balanced sampling uses --sample_45_num and --loss_weight_45.
+
+Key options (see options.py for full list):
+
+    --in_dim 20
+    --design_dim 64
+    --hgat_hid 64
+    --hgat_heads 1
+    --sample_45_num 1
+    --loss_weight_45 1.0

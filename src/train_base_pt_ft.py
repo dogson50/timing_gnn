@@ -122,6 +122,112 @@ def extract_subckt_text(sp_text: str, subckt_name: str) -> str:
     return "".join(buf) if buf else ""
 
 
+def build_tgt_graph_cache(data_dir, meta, device):
+    mapping = meta.get("tgt_subckt_by_cell", {})
+    if not mapping:
+        print("[Warn] meta has no tgt_subckt_by_cell")
+        return {}
+
+    tgt_spice = meta.get("tgt_sp_file", "")
+    if not tgt_spice:
+        print("[Warn] meta has no tgt_sp_file")
+        return {}
+
+    if not os.path.exists(tgt_spice):
+        cand = os.path.join(data_dir, tgt_spice)
+        if os.path.exists(cand):
+            tgt_spice = cand
+        else:
+            raise FileNotFoundError(f"Target SPICE not found: {tgt_spice}")
+
+    print(f"[Info] Parsing Target SPICE: {tgt_spice}")
+    sp_text = open(tgt_spice, "r", encoding="utf-8", errors="ignore").read()
+
+    graph_cache = {}
+    for ctype, sub_name in mapping.items():
+        sub_txt = extract_subckt_text(sp_text, sub_name)
+        if not sub_txt:
+            continue
+        devs = parse_transistors_spice(sub_txt)
+        _, pins = parse_top_subckt_pins(sub_txt)
+        if not devs:
+            continue
+        g, feats, _ = build_dgl_graph_from_devs(devs, pins)
+        graph_cache[str(ctype)] = (g.to(device), {k: v.to(device) for k, v in feats.items()})
+    print(f"[Info] Cached target graphs: {len(graph_cache)}")
+    return graph_cache
+
+
+def build_src_graph_cache(data_dir, meta, device):
+    mapping = meta.get("src_spi_by_cell", {})
+    if not mapping:
+        print("[Warn] meta has no src_spi_by_cell")
+        return {}
+
+    graph_cache = {}
+    for ctype, sp_path in mapping.items():
+        if not sp_path:
+            continue
+        if not os.path.exists(sp_path):
+            cand = os.path.join(data_dir, sp_path)
+            if os.path.exists(cand):
+                sp_path = cand
+            else:
+                continue
+        sp_text = open(sp_path, "r", encoding="utf-8", errors="ignore").read()
+        devs = parse_transistors_spice(sp_text)
+        _, pins = parse_top_subckt_pins(sp_text)
+        if not devs:
+            continue
+        g, feats, _ = build_dgl_graph_from_devs(devs, pins)
+        graph_cache[str(ctype)] = (g.to(device), {k: v.to(device) for k, v in feats.items()})
+    print(f"[Info] Cached source graphs: {len(graph_cache)}")
+    return graph_cache
+
+
+def build_z_batch(cts, device, design_dim, *, z_dict=None, graph_cache=None, enc=None, dedup=False):
+    if z_dict is None and (graph_cache is None or enc is None):
+        raise ValueError("build_z_batch requires z_dict or (graph_cache + enc).")
+
+    def _get_z(ct):
+        key = str(ct)
+        if z_dict is not None:
+            z = z_dict.get(key)
+            if z is None:
+                return th.zeros(1, design_dim, device=device)
+            return z
+        entry = graph_cache.get(key) if graph_cache is not None else None
+        if entry is None:
+            return th.zeros(1, design_dim, device=device)
+        g, feats = entry
+        z = enc(g, feats)
+        if z.dim() == 1:
+            z = z.unsqueeze(0)
+        return z
+
+    if dedup:
+        seen = {}
+        uniq = []
+        idx_map = []
+        for ct in cts:
+            key = str(ct)
+            idx = seen.get(key)
+            if idx is None:
+                idx = len(uniq)
+                seen[key] = idx
+                uniq.append(key)
+            idx_map.append(idx)
+        if not uniq:
+            return th.zeros((0, design_dim), device=device)
+        z_unique = th.cat([_get_z(ct) for ct in uniq], dim=0)
+        index = th.tensor(idx_map, device=device, dtype=th.long)
+        return z_unique.index_select(0, index)
+
+    if len(cts) == 0:
+        return th.zeros((0, design_dim), device=device)
+    return th.cat([_get_z(ct) for ct in cts], dim=0)
+
+
 def precompute_z_from_tgt_spice(data_dir, meta, enc, device, design_dim):
     mapping = meta.get("tgt_subckt_by_cell", {})
     if not mapping:
@@ -265,23 +371,25 @@ def train(options, seed):
     print('The model architecture is shown as follow:')
     print(model)
     print("----------------Loading HGAT embeddings----------------")
-    z_dict_src = precompute_z_from_src_spice(data_dir, meta, enc, device, design_dim)
-    z_dict_tgt = precompute_z_from_tgt_spice(data_dir, meta, enc, device, design_dim)
-
-    def z_provider_src(ct):
-        z = z_dict_src.get(ct)
-        if z is None:
-            return th.zeros(1, design_dim, device=device)
-        return z
-
-    def z_provider_tgt(ct):
-        z = z_dict_tgt.get(ct)
-        if z is None:
-            return th.zeros(1, design_dim, device=device)
-        return z
-
-    optimizer = th.optim.Adam(list(enc.parameters()) + list(model.parameters()),
-                              lr=options.learning_rate, weight_decay=options.weight_decay)
+    z_dict_src = None
+    z_dict_tgt = None
+    graph_cache_src = None
+    graph_cache_tgt = None
+    if options.freeze_hgat:
+        print("[Info] freeze_hgat=True, precomputing z")
+        z_dict_src = precompute_z_from_src_spice(data_dir, meta, enc, device, design_dim)
+        z_dict_tgt = precompute_z_from_tgt_spice(data_dir, meta, enc, device, design_dim)
+        for p in enc.parameters():
+            p.requires_grad = False
+        enc.eval()
+        optimizer = th.optim.Adam(model.parameters(),
+                                  lr=options.learning_rate, weight_decay=options.weight_decay)
+    else:
+        print("[Info] freeze_hgat=False, building graph cache")
+        graph_cache_src = build_src_graph_cache(data_dir, meta, device)
+        graph_cache_tgt = build_tgt_graph_cache(data_dir, meta, device)
+        optimizer = th.optim.Adam(list(enc.parameters()) + list(model.parameters()),
+                                  lr=options.learning_rate, weight_decay=options.weight_decay)
     loss_fn = nn.MSELoss()
     r2_score = R2Score().to(device)
 
@@ -293,9 +401,12 @@ def train(options, seed):
         pretrain_epochs = total_epochs // 2
     finetune_epochs = total_epochs - pretrain_epochs
 
-    def run_epoch(loader, z_provider, train_mode: bool):
+    def run_epoch(loader, z_dict, graph_cache, train_mode: bool):
         if train_mode:
-            enc.train()
+            if options.freeze_hgat:
+                enc.eval()
+            else:
+                enc.train()
             model.train()
         else:
             enc.eval()
@@ -308,7 +419,11 @@ def train(options, seed):
             for xb, yb, cts in loader:
                 xb = xb.to(device)
                 yb = yb.to(device)
-                zb = th.cat([z_provider(ct) for ct in cts], dim=0)
+                zb = build_z_batch(
+                    cts, device, design_dim,
+                    z_dict=z_dict, graph_cache=graph_cache, enc=enc,
+                    dedup=options.dedup_z
+                )
 
                 pred = model(xb, zb)
                 loss = loss_fn(pred, yb)
@@ -327,8 +442,8 @@ def train(options, seed):
         return avg_loss, avg_r2
 
     for epoch in range(pretrain_epochs):
-        train_loss, train_r2 = run_epoch(pretrain_dl, z_provider_src, True)
-        val_loss, val_r2 = run_epoch(val_dl, z_provider_tgt, False)
+        train_loss, train_r2 = run_epoch(pretrain_dl, z_dict_src, graph_cache_src, True)
+        val_loss, val_r2 = run_epoch(val_dl, z_dict_tgt, graph_cache_tgt, False)
         print(
             f"[Pretrain] e{epoch}, train_loss:{train_loss:.4f}, r2:{train_r2:.3f}, "
             f"val_loss:{val_loss:.4f}, val_r2:{val_r2:.3f}"
@@ -343,8 +458,8 @@ def train(options, seed):
             print("Model successfully saved")
 
     for epoch in range(finetune_epochs):
-        train_loss, train_r2 = run_epoch(finetune_dl, z_provider_tgt, True)
-        val_loss, val_r2 = run_epoch(val_dl, z_provider_tgt, False)
+        train_loss, train_r2 = run_epoch(finetune_dl, z_dict_tgt, graph_cache_tgt, True)
+        val_loss, val_r2 = run_epoch(val_dl, z_dict_tgt, graph_cache_tgt, False)
         print(
             f"[Finetune] e{epoch}, train_loss:{train_loss:.4f}, r2:{train_r2:.3f}, "
             f"val_loss:{val_loss:.4f}, val_r2:{val_r2:.3f}"

@@ -119,6 +119,112 @@ def extract_subckt_text(sp_text: str, subckt_name: str) -> str:
     return "".join(buf) if buf else ""
 
 
+def build_tgt_graph_cache(data_dir, meta, device):
+    mapping = meta.get("tgt_subckt_by_cell", {})
+    if not mapping:
+        print("[Warn] meta has no tgt_subckt_by_cell")
+        return {}
+
+    tgt_spice = meta.get("tgt_sp_file", "")
+    if not tgt_spice:
+        print("[Warn] meta has no tgt_sp_file")
+        return {}
+
+    if not os.path.exists(tgt_spice):
+        cand = os.path.join(data_dir, tgt_spice)
+        if os.path.exists(cand):
+            tgt_spice = cand
+        else:
+            raise FileNotFoundError(f"Target SPICE not found: {tgt_spice}")
+
+    print(f"[Info] Parsing Target SPICE: {tgt_spice}")
+    sp_text = open(tgt_spice, "r", encoding="utf-8", errors="ignore").read()
+
+    graph_cache = {}
+    for ctype, sub_name in mapping.items():
+        sub_txt = extract_subckt_text(sp_text, sub_name)
+        if not sub_txt:
+            continue
+        devs = parse_transistors_spice(sub_txt)
+        _, pins = parse_top_subckt_pins(sub_txt)
+        if not devs:
+            continue
+        g, feats, _ = build_dgl_graph_from_devs(devs, pins)
+        graph_cache[str(ctype)] = (g.to(device), {k: v.to(device) for k, v in feats.items()})
+    print(f"[Info] Cached target graphs: {len(graph_cache)}")
+    return graph_cache
+
+
+def build_src_graph_cache(data_dir, meta, device):
+    mapping = meta.get("src_spi_by_cell", {})
+    if not mapping:
+        print("[Warn] meta has no src_spi_by_cell")
+        return {}
+
+    graph_cache = {}
+    for ctype, sp_path in mapping.items():
+        if not sp_path:
+            continue
+        if not os.path.exists(sp_path):
+            cand = os.path.join(data_dir, sp_path)
+            if os.path.exists(cand):
+                sp_path = cand
+            else:
+                continue
+        sp_text = open(sp_path, "r", encoding="utf-8", errors="ignore").read()
+        devs = parse_transistors_spice(sp_text)
+        _, pins = parse_top_subckt_pins(sp_text)
+        if not devs:
+            continue
+        g, feats, _ = build_dgl_graph_from_devs(devs, pins)
+        graph_cache[str(ctype)] = (g.to(device), {k: v.to(device) for k, v in feats.items()})
+    print(f"[Info] Cached source graphs: {len(graph_cache)}")
+    return graph_cache
+
+
+def build_z_batch(cts, device, design_dim, *, z_dict=None, graph_cache=None, enc=None, dedup=False):
+    if z_dict is None and (graph_cache is None or enc is None):
+        raise ValueError("build_z_batch requires z_dict or (graph_cache + enc).")
+
+    def _get_z(ct):
+        key = str(ct)
+        if z_dict is not None:
+            z = z_dict.get(key)
+            if z is None:
+                return th.zeros(1, design_dim, device=device)
+            return z
+        entry = graph_cache.get(key) if graph_cache is not None else None
+        if entry is None:
+            return th.zeros(1, design_dim, device=device)
+        g, feats = entry
+        z = enc(g, feats)
+        if z.dim() == 1:
+            z = z.unsqueeze(0)
+        return z
+
+    if dedup:
+        seen = {}
+        uniq = []
+        idx_map = []
+        for ct in cts:
+            key = str(ct)
+            idx = seen.get(key)
+            if idx is None:
+                idx = len(uniq)
+                seen[key] = idx
+                uniq.append(key)
+            idx_map.append(idx)
+        if not uniq:
+            return th.zeros((0, design_dim), device=device)
+        z_unique = th.cat([_get_z(ct) for ct in uniq], dim=0)
+        index = th.tensor(idx_map, device=device, dtype=th.long)
+        return z_unique.index_select(0, index)
+
+    if len(cts) == 0:
+        return th.zeros((0, design_dim), device=device)
+    return th.cat([_get_z(ct) for ct in cts], dim=0)
+
+
 def precompute_z_from_tgt_spice(data_dir, meta, enc, device, design_dim):
     mapping = meta.get("tgt_subckt_by_cell", {})
     if not mapping:
@@ -255,23 +361,25 @@ def train_balanced_cell(options, seed):
     model = CellDelayRegressor(in_dim=options.in_dim, design_dim=design_dim, hid=hgat_hid, dropout=dropout).to(device)
 
     print("----------------Loading HGAT embeddings----------------")
-    z_dict_src = precompute_z_from_src_spice(data_dir, meta, enc, device, design_dim)
-    z_dict_tgt = precompute_z_from_tgt_spice(data_dir, meta, enc, device, design_dim)
-
-    def z_provider_src(ct):
-        z = z_dict_src.get(ct)
-        if z is None:
-            return th.zeros(1, design_dim, device=device)
-        return z
-
-    def z_provider_tgt(ct):
-        z = z_dict_tgt.get(ct)
-        if z is None:
-            return th.zeros(1, design_dim, device=device)
-        return z
-
-    optimizer = th.optim.Adam(list(enc.parameters()) + list(model.parameters()),
-                              lr=options.learning_rate, weight_decay=options.weight_decay)
+    z_dict_src = None
+    z_dict_tgt = None
+    graph_cache_src = None
+    graph_cache_tgt = None
+    if options.freeze_hgat:
+        print("[Info] freeze_hgat=True, precomputing z")
+        z_dict_src = precompute_z_from_src_spice(data_dir, meta, enc, device, design_dim)
+        z_dict_tgt = precompute_z_from_tgt_spice(data_dir, meta, enc, device, design_dim)
+        for p in enc.parameters():
+            p.requires_grad = False
+        enc.eval()
+        optimizer = th.optim.Adam(model.parameters(),
+                                  lr=options.learning_rate, weight_decay=options.weight_decay)
+    else:
+        print("[Info] freeze_hgat=False, building graph cache")
+        graph_cache_src = build_src_graph_cache(data_dir, meta, device)
+        graph_cache_tgt = build_tgt_graph_cache(data_dir, meta, device)
+        optimizer = th.optim.Adam(list(enc.parameters()) + list(model.parameters()),
+                                  lr=options.learning_rate, weight_decay=options.weight_decay)
     loss_fn = nn.MSELoss()
     r2_score = R2Score().to(device)
 
@@ -279,7 +387,10 @@ def train_balanced_cell(options, seed):
     best_val = float("-inf")
 
     for epoch in range(options.num_epoch):
-        enc.train()
+        if options.freeze_hgat:
+            enc.eval()
+        else:
+            enc.train()
         model.train()
         r2_score.reset()
         total_loss = 0.0
@@ -289,7 +400,11 @@ def train_balanced_cell(options, seed):
         for xb_7, yb_7, cts_7 in dl_7:
             xb_7 = xb_7.to(device)
             yb_7 = yb_7.to(device)
-            zb_7 = th.cat([z_provider_tgt(ct) for ct in cts_7], dim=0)
+            zb_7 = build_z_batch(
+                cts_7, device, design_dim,
+                z_dict=z_dict_tgt, graph_cache=graph_cache_tgt, enc=enc,
+                dedup=options.dedup_z
+            )
             pred_7 = model(xb_7, zb_7)
             loss_7 = loss_fn(pred_7, yb_7)
 
@@ -302,7 +417,11 @@ def train_balanced_cell(options, seed):
                     xb_45, yb_45, cts_45 = next(dl_45_iter)
                 xb_45 = xb_45.to(device)
                 yb_45 = yb_45.to(device)
-                zb_45 = th.cat([z_provider_src(ct) for ct in cts_45], dim=0)
+                zb_45 = build_z_batch(
+                    cts_45, device, design_dim,
+                    z_dict=z_dict_src, graph_cache=graph_cache_src, enc=enc,
+                    dedup=options.dedup_z
+                )
                 pred_45 = model(xb_45, zb_45)
                 loss_45 = loss_fn(pred_45, yb_45)
                 loss_45_list.append(loss_45)
@@ -333,7 +452,11 @@ def train_balanced_cell(options, seed):
             for xb, yb, cts in val_dl:
                 xb = xb.to(device)
                 yb = yb.to(device)
-                zb = th.cat([z_provider_tgt(ct) for ct in cts], dim=0)
+                zb = build_z_batch(
+                    cts, device, design_dim,
+                    z_dict=z_dict_tgt, graph_cache=graph_cache_tgt, enc=enc,
+                    dedup=options.dedup_z
+                )
                 pred = model(xb, zb)
                 loss = loss_fn(pred, yb)
                 val_loss += loss.item() * len(yb)

@@ -10,13 +10,19 @@ def get_options(args=None):
     parser.add_argument("--num_epoch", type=int,
                         help='Type: int; number of epoches that the training procedure runs. Type: int', default=1000)
     # HGAT/MLP regression settings
-    parser.add_argument("--in_dim", type=int, help='the dimension of the input feature. Type: int', default=20)
+    parser.add_argument("--in_dim", type=int,
+                        help='input feature dimension (must equal len(NUMERIC_COLS)=20).', default=20)
     parser.add_argument("--out_dim", type=int, help='the dimension of the output embedding. Type: int', default=64)
     parser.add_argument("--hidden_dim", type=int, help='the dimension of the intermediate MLP layers. Type: int',
                         default=256)
     parser.add_argument("--design_dim", type=int, default=64, help='HGAT design embedding dimension')
     parser.add_argument("--hgat_hid", type=int, default=64, help='HGAT hidden dimension')
     parser.add_argument("--hgat_heads", type=int, default=1, help='HGAT attention heads')
+    # HGAT runtime controls (shared across training scripts)
+    parser.add_argument("--freeze_hgat", action="store_true",
+                        help="freeze HGAT encoder and precompute z (train MLP only)")
+    parser.add_argument("--dedup_z", action="store_true",
+                        help="deduplicate cell_type within batch when building z")
     parser.add_argument("--pretrain_epochs", type=int, default=0,
                         help="Number of pretrain epochs (0 = half of num_epoch)")
     parser.add_argument("--gcn_dropout", type=float, help='dropout rate for GNN layers. Type: float', default=0)
@@ -41,8 +47,8 @@ def get_options(args=None):
     parser.add_argument('--os_rate', help='the oversampling rate. Type: int', type=int, default=1)
     parser.add_argument('--beta', type=float, default=0.5,
                         help='choose the threshold for binary classification to make a trade-off between recall and precision. Type: float')
-    parser.add_argument('--data_save_path', type=str, help='the directory that contains the dataset. Type: str',
-                        default='../output')
+    parser.add_argument('--data_save_path', type=str,
+                        help='directory containing dataset.pkl (build_dataset output).', default='../output')
     parser.add_argument('--rawdata_path', type=str, default='../rawdata/example')
     # parser.add_argument('--data_info_txt',type=str, help='the file that saves the information of the data to parse')
     # parser.add_argument('--data_usage',type=str,help='decide whether to generate train dataset or test dataset')
@@ -70,8 +76,10 @@ def get_options(args=None):
     parser.add_argument('--ft_mode', type=str, default=None)
     parser.add_argument('--time_unit_trans', type=str, default=None)
     # batch balanced training
-    parser.add_argument('--sample_45_num', type=int, default=1)
-    parser.add_argument('--loss_weight_45', type=float, default=1.0)
+    parser.add_argument('--sample_45_num', type=int, default=1,
+                        help='number of source-domain batches per target batch')
+    parser.add_argument('--loss_weight_45', type=float, default=1.0,
+                        help='weight for source-domain loss in balanced training')
     # disentangle and alignment
     parser.add_argument('--node_feat_dim', type=int, default=128)
     parser.add_argument('--con_temp', type=float, default=1.0)
@@ -114,6 +122,6 @@ def get_options(args=None):
     parser.add_argument("--split_seed", type=int, default=42,
                         help="Random seed for dataset splitting (for build_dataset)")
     parser.add_argument("--dataset_pkl_name", type=str, default="dataset.pkl",
-                        help="Output dataset pkl filename (for build_dataset)")
+                        help="dataset pkl filename (used by build_dataset and training)")
     options = parser.parse_args(args)
     return options
