@@ -492,6 +492,58 @@ def split_by_cell_type(df: pd.DataFrame, ratios=(0.7, 0.2, 0.1), seed=42) -> Tup
     return c_train.tolist(), c_val.tolist(), c_test.tolist()
 
 
+def split_by_random(df: pd.DataFrame, ratios=(0.7, 0.2, 0.1), seed=42) -> Tuple[List[int], List[int], List[int]]:
+    n = len(df)
+    rng = np.random.RandomState(seed)
+    idx = np.arange(n)
+    rng.shuffle(idx)
+
+    if n < 3:
+        return idx.tolist(), [], []
+
+    n_train = int(np.floor(ratios[0] * n))
+    n_val = int(np.floor(ratios[1] * n))
+    n_test = n - n_train - n_val
+
+    if n_test < 1 and n > 2:
+        n_test = 1
+        n_train = n - n_val - n_test
+
+    train_idx = idx[:n_train]
+    val_idx = idx[n_train:n_train + n_val]
+    test_idx = idx[n_train + n_val:]
+    return train_idx.tolist(), val_idx.tolist(), test_idx.tolist()
+
+
+def split_by_cell_type_stratified(
+        df: pd.DataFrame, ratios=(0.7, 0.2, 0.1), seed=42
+) -> Tuple[List[int], List[int], List[int]]:
+    rng = np.random.RandomState(seed)
+    train_idx = []
+    val_idx = []
+    test_idx = []
+    for ct in df["cell_type"].unique():
+        idx = df.index[df["cell_type"] == ct].to_numpy()
+        rng.shuffle(idx)
+        n = len(idx)
+        if n < 3:
+            train_idx.extend(idx.tolist())
+            continue
+        n_train = int(np.floor(ratios[0] * n))
+        n_val = int(np.floor(ratios[1] * n))
+        n_test = n - n_train - n_val
+        if n_test < 1 and n > 2:
+            n_test = 1
+            n_train = n - n_val - n_test
+            if n_train < 1:
+                n_train = 1
+                n_val = max(0, n - n_train - n_test)
+        train_idx.extend(idx[:n_train].tolist())
+        val_idx.extend(idx[n_train:n_train + n_val].tolist())
+        test_idx.extend(idx[n_train + n_val:].tolist())
+    return train_idx, val_idx, test_idx
+
+
 # ======================================================
 # ¡¾ºËÐÄÐÂÔö¡¿¼ÆËã Scalers
 # ======================================================
@@ -618,22 +670,75 @@ def main():
         df_src = df_src.sample(frac=1, random_state=args.split_seed).reset_index(drop=True)
 
     # ---------- 4) Êý¾Ý¼¯»®·Ö ----------
-    train_cells, val_cells, test_cells = split_by_cell_type(
-        df_tgt,
-        ratios=tuple(args.tgt_split_ratios),
-        seed=args.split_seed,
-    )
+    split_mode = getattr(args, "tgt_split_mode", "cell_type")
+    ratios = tuple(args.tgt_split_ratios)
+    if split_mode == "cell_type":
+        train_cells, val_cells, test_cells = split_by_cell_type(
+            df_tgt,
+            ratios=ratios,
+            seed=args.split_seed,
+        )
 
-    print("\n" + "=" * 50)
-    print("¡¾Êý¾Ý¼¯ÇÐ·ÖÏêÇé (By Cell Type)¡¿")
-    print(f"  Train Cells ({len(train_cells)}): {train_cells}")
-    print(f"  Val   Cells ({len(val_cells)}): {val_cells}")
-    print(f"  Test  Cells ({len(test_cells)}): {test_cells}")
-    print("=" * 50 + "\n")
+        print("\n" + "=" * 50)
+        print("Target split (By Cell Type)")
+        print(f"  Train Cells ({len(train_cells)}): {train_cells}")
+        print(f"  Val   Cells ({len(val_cells)}): {val_cells}")
+        print(f"  Test  Cells ({len(test_cells)}): {test_cells}")
+        print("=" * 50 + "\n")
 
-    df_tgt_train_pool = df_tgt[df_tgt["cell_type"].isin(train_cells)].copy()
-    df_tgt_val = df_tgt[df_tgt["cell_type"].isin(val_cells)].copy()
-    df_tgt_test = df_tgt[df_tgt["cell_type"].isin(test_cells)].copy()
+        df_tgt_train_pool = df_tgt[df_tgt["cell_type"].isin(train_cells)].copy()
+        df_tgt_val = df_tgt[df_tgt["cell_type"].isin(val_cells)].copy()
+        df_tgt_test = df_tgt[df_tgt["cell_type"].isin(test_cells)].copy()
+        split_info = {
+            "split_mode": "cell_type",
+            "ratios": list(ratios),
+            "seed": args.split_seed,
+            "train_cells": train_cells,
+            "val_cells": val_cells,
+            "test_cells": test_cells,
+        }
+    elif split_mode == "random":
+        train_idx, val_idx, test_idx = split_by_random(
+            df_tgt, ratios=ratios, seed=args.split_seed
+        )
+        df_tgt_train_pool = df_tgt.iloc[train_idx].copy()
+        df_tgt_val = df_tgt.iloc[val_idx].copy()
+        df_tgt_test = df_tgt.iloc[test_idx].copy()
+        print("\n" + "=" * 50)
+        print("Target split (Random)")
+        print(f"  Train rows: {len(df_tgt_train_pool)}")
+        print(f"  Val   rows: {len(df_tgt_val)}")
+        print(f"  Test  rows: {len(df_tgt_test)}")
+        print("=" * 50 + "\n")
+        split_info = {
+            "split_mode": "random",
+            "ratios": list(ratios),
+            "seed": args.split_seed,
+        }
+    elif split_mode == "stratified":
+        train_idx, val_idx, test_idx = split_by_cell_type_stratified(
+            df_tgt, ratios=ratios, seed=args.split_seed
+        )
+        df_tgt_train_pool = df_tgt.iloc[train_idx].copy()
+        df_tgt_val = df_tgt.iloc[val_idx].copy()
+        df_tgt_test = df_tgt.iloc[test_idx].copy()
+        print("\n" + "=" * 50)
+        print("Target split (Stratified by Cell Type)")
+        print(f"  Train rows: {len(df_tgt_train_pool)}")
+        print(f"  Val   rows: {len(df_tgt_val)}")
+        print(f"  Test  rows: {len(df_tgt_test)}")
+        print("=" * 50 + "\n")
+        split_info = {
+            "split_mode": "stratified",
+            "ratios": list(ratios),
+            "seed": args.split_seed,
+        }
+    else:
+        raise ValueError(f"Unknown tgt_split_mode: {split_mode}")
+
+    split_info["num_tgt_train_pool"] = len(df_tgt_train_pool)
+    split_info["num_tgt_val"] = len(df_tgt_val)
+    split_info["num_tgt_test"] = len(df_tgt_test)
 
     # =========================================================
     # ¡¾ÐÂÔö²½Öè¡¿¼ÆËã²¢±£´æ Scalers (»ùÓÚ Target Train Pool)
@@ -682,11 +787,7 @@ def main():
             "src": src_slew_thresholds,
             "tgt": tgt_slew_thresholds,
         },
-        "split_info": {
-            "train_cells": train_cells,
-            "val_cells": val_cells,
-            "test_cells": test_cells,
-        },
+        "split_info": split_info,
         "stats": {
             "num_src": len(df_src),
             "num_tgt_train_labeled": len(df_tgt_train),

@@ -93,49 +93,23 @@
     }
   },
   "split_info": {
-    "train_cells": [
-      "INVX1",
-      "BUFX2",
-      "NOR3X1",
-      "OR2X4"
+    "split_mode": "stratified",
+    "ratios": [
+      0.14,
+      0.14,
+      0.72
     ],
-    "val_cells": [
-      "AND3X4",
-      "INVX8",
-      "NOR2X1",
-      "NOR3X2"
-    ],
-    "test_cells": [
-      "NAND2X1",
-      "OR4X1",
-      "OR3X4",
-      "BUFX4",
-      "OR2X2",
-      "AND3X2",
-      "INVX4",
-      "XOR2X2",
-      "NAND3X2",
-      "AND4X2",
-      "INVX2",
-      "NAND3X1",
-      "NOR2X2",
-      "AND2X4",
-      "OR3X2",
-      "AND2X2",
-      "AND3X1",
-      "NAND2X2",
-      "AND4X1",
-      "OR3X1",
-      "OR4X2",
-      "BUFX8"
-    ]
+    "seed": 42,
+    "num_tgt_train_pool": 987,
+    "num_tgt_val": 987,
+    "num_tgt_test": 5178
   },
   "stats": {
     "num_src": 7607,
-    "num_tgt_train_labeled": 617,
-    "num_tgt_train_unlabeled": 69,
-    "num_tgt_val": 882,
-    "num_tgt_test": 5584
+    "num_tgt_train_labeled": 888,
+    "num_tgt_train_unlabeled": 99,
+    "num_tgt_val": 987,
+    "num_tgt_test": 5178
   },
   "feature_cols": [
     "cell_type",

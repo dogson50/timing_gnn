@@ -8,7 +8,7 @@ def get_options(args=None):
     parser.add_argument("--batch_size", type=int, help='the number of samples in each training batch. Type: int',
                         default=1350)
     parser.add_argument("--num_epoch", type=int,
-                        help='Type: int; number of epoches that the training procedure runs. Type: int', default=1000)
+                        help='Type: int; number of epoches that the training procedure runs. Type: int', default=500)
     # HGAT/MLP regression settings
     parser.add_argument("--in_dim", type=int,
                         help='input feature dimension (must equal len(NUMERIC_COLS)=20).', default=20)
@@ -118,7 +118,10 @@ def get_options(args=None):
     parser.add_argument("--target_label_ratio", type=float, default=0.9,
                         help="Ratio of labeled data in target train pool (for build_dataset)")
     parser.add_argument("--tgt_split_ratios", type=float, nargs=3, default=[0.14, 0.14, 0.72],
-                        help="Target split ratios for train/val/test by cell type (for build_dataset)")
+                        help="Target split ratios for train/val/test (for build_dataset)")
+    parser.add_argument("--tgt_split_mode", type=str, default="stratified",
+                        choices=["cell_type", "random", "stratified"],
+                        help="Target split mode: cell_type | random | stratified")
     parser.add_argument("--split_seed", type=int, default=42,
                         help="Random seed for dataset splitting (for build_dataset)")
     parser.add_argument("--dataset_pkl_name", type=str, default="dataset.pkl",
