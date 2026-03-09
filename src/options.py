@@ -18,6 +18,28 @@ def get_options(args=None):
     parser.add_argument("--design_dim", type=int, default=64, help='HGAT design embedding dimension')
     parser.add_argument("--hgat_hid", type=int, default=64, help='HGAT hidden dimension')
     parser.add_argument("--hgat_heads", type=int, default=1, help='HGAT attention heads')
+    parser.add_argument("--hgat_layers", type=int, default=2, help='HGAT message passing layers')
+    parser.add_argument("--hgat_dropout", type=float, default=0.1, help='HGAT dropout rate')
+    parser.add_argument("--hgat_use_net_readout", action="store_true",
+                        help="include NET node statistics in HGAT graph readout")
+    parser.add_argument("--hgat_type_attn_readout", action="store_true",
+                        help="use learned node-type attention when fusing HGAT type summaries")
+    parser.add_argument("--use_arc_cond", action="store_true",
+                        help="enable arc conditioning in MLP heads using from_pin/to_pin/pol embeddings")
+    parser.add_argument("--pin_emb_dim", type=int, default=8,
+                        help="embedding dim for from_pin/to_pin when --use_arc_cond")
+    parser.add_argument("--pol_emb_dim", type=int, default=2,
+                        help="embedding dim for polarity when --use_arc_cond")
+    parser.add_argument("--arc_vocab_scope", type=str, default="tgt",
+                        choices=["tgt", "src_tgt"],
+                        help="pin vocabulary scope for arc conditioning")
+    parser.add_argument("--arc_sep_domain_emb", action="store_true",
+                        help="use separate arc embeddings for target/source heads")
+    parser.add_argument("--arc_cond_mode", type=str, default="concat",
+                        choices=["concat", "film"],
+                        help="arc conditioning fusion mode: concat or film")
+    parser.add_argument("--disable_src_arc_cond", action="store_true",
+                        help="disable arc conditioning on source head (target head still uses arc cond)")
     # HGAT runtime controls (shared across training scripts)
     parser.add_argument("--freeze_hgat", action="store_true",
                         help="freeze HGAT encoder and precompute z (train MLP only)")
@@ -80,6 +102,16 @@ def get_options(args=None):
                         help='number of source-domain batches per target batch')
     parser.add_argument('--loss_weight_45', type=float, default=1.0,
                         help='weight for source-domain loss in balanced training')
+    parser.add_argument('--src_loss_anneal_start', type=int, default=-1,
+                        help='epoch (1-based) to start annealing source loss weight; <0 disables')
+    parser.add_argument('--src_loss_anneal_end', type=int, default=-1,
+                        help='epoch (1-based) to end annealing source loss weight; <0 disables')
+    parser.add_argument('--src_loss_final_scale', type=float, default=1.0,
+                        help='final scale on loss_weight_45 after annealing (e.g., 0.3)')
+    parser.add_argument('--early_stop_patience', type=int, default=0,
+                        help='early stop patience on val_r2 (0 disables early stop)')
+    parser.add_argument('--early_stop_min_delta', type=float, default=0.0,
+                        help='minimum val_r2 improvement to reset early-stop counter')
     # disentangle and alignment
     parser.add_argument('--node_feat_dim', type=int, default=128)
     parser.add_argument('--con_temp', type=float, default=1.0)
@@ -119,7 +151,7 @@ def get_options(args=None):
                         help="Ratio of labeled data in target train pool (for build_dataset)")
     parser.add_argument("--tgt_split_ratios", type=float, nargs=3, default=[0.14, 0.14, 0.72],
                         help="Target split ratios for train/val/test (for build_dataset)")
-    parser.add_argument("--tgt_split_mode", type=str, default="stratified",
+    parser.add_argument("--tgt_split_mode", type=str, default="random",
                         choices=["cell_type", "random", "stratified"],
                         help="Target split mode: cell_type | random | stratified")
     parser.add_argument("--split_seed", type=int, default=42,

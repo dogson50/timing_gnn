@@ -31,6 +31,34 @@ NUMERIC_COLS = [
 TARGET_COL = "delay"
 
 
+def _norm_pin_name(v):
+    if v is None:
+        return "<UNK>"
+    s = str(v).strip()
+    return s if s else "<UNK>"
+
+
+def _build_pin_vocab(*dfs):
+    pin2id = {"<UNK>": 0}
+    for df in dfs:
+        if df is None or len(df) == 0:
+            continue
+        for col in ["from_pin", "to_pin"]:
+            if col not in df.columns:
+                continue
+            vals = df[col].astype(str).values
+            for raw in vals:
+                p = _norm_pin_name(raw)
+                if p not in pin2id:
+                    pin2id[p] = len(pin2id)
+    return pin2id
+
+
+def _to_pol_id(v):
+    s = str(v).lower()
+    return 1 if s == "rise" else 0
+
+
 def _ensure_pol_bit(df):
     if "pol_bit" not in df.columns:
         if "pol" in df.columns:
@@ -59,15 +87,29 @@ def _norm_xy(df, x_mean, x_std, y_mean, y_std):
 
 
 class CellDelayDataset(TorchDataset):
-    def __init__(self, df, x_mean, x_std, y_mean, y_std):
+    def __init__(self, df, x_mean, x_std, y_mean, y_std, pin2id):
         self.df = df.reset_index(drop=True)
         self.x, self.y, self.cts = _norm_xy(self.df, x_mean, x_std, y_mean, y_std)
+        self.pin2id = pin2id
+        from_vals = self.df["from_pin"].values if "from_pin" in self.df.columns else ["<UNK>"] * len(self.df)
+        to_vals = self.df["to_pin"].values if "to_pin" in self.df.columns else ["<UNK>"] * len(self.df)
+        pol_vals = self.df["pol"].values if "pol" in self.df.columns else ["fall"] * len(self.df)
+        self.from_pin_id = np.array([self.pin2id.get(_norm_pin_name(v), 0) for v in from_vals], dtype=np.int64)
+        self.to_pin_id = np.array([self.pin2id.get(_norm_pin_name(v), 0) for v in to_vals], dtype=np.int64)
+        self.pol_id = np.array([_to_pol_id(v) for v in pol_vals], dtype=np.int64)
 
     def __len__(self):
         return len(self.x)
 
     def __getitem__(self, i):
-        return th.from_numpy(self.x[i]), th.tensor(self.y[i]), self.cts[i]
+        return (
+            th.from_numpy(self.x[i]),
+            th.tensor(self.y[i]),
+            self.cts[i],
+            th.tensor(self.from_pin_id[i], dtype=th.long),
+            th.tensor(self.to_pin_id[i], dtype=th.long),
+            th.tensor(self.pol_id[i], dtype=th.long),
+        )
 
 
 def load_dataset_pkl(data_dir: str, pkl_name: str = "dataset.pkl"):
@@ -217,15 +259,54 @@ def precompute_z_from_graph_cache(graph_cache, enc, device, design_dim):
 
 
 class SepCellDelayRegressor(nn.Module):
-    def __init__(self, in_dim, design_dim, hid=256, dropout=0.0):
+    def __init__(
+        self,
+        in_dim,
+        design_dim,
+        hid=256,
+        dropout=0.0,
+        *,
+        num_pins=1,
+        pin_emb_dim=8,
+        pol_emb_dim=2,
+        use_arc_cond=False,
+        arc_sep_domain_emb=False,
+        arc_cond_mode="concat",
+        src_use_arc_cond=True,
+    ):
         super().__init__()
-        self.mlp_tgt = self._make_mlp(in_dim, design_dim, hid, dropout)
-        self.mlp_src = self._make_mlp(in_dim, design_dim, hid, dropout)
+        self.use_arc_cond = use_arc_cond
+        self.arc_sep_domain_emb = arc_sep_domain_emb
+        self.src_use_arc_cond = bool(src_use_arc_cond)
+        self.arc_cond_mode = str(arc_cond_mode).lower()
+        if self.arc_cond_mode not in ("concat", "film"):
+            raise ValueError(f"Unknown arc_cond_mode: {self.arc_cond_mode}")
+        self.pin_emb_dim = pin_emb_dim
+        self.pol_emb_dim = pol_emb_dim
+        self.base_dim = in_dim + design_dim
+        self.arc_dim = 2 * pin_emb_dim + pol_emb_dim
+        if self.use_arc_cond:
+            n_pins = max(1, int(num_pins))
+            if self.arc_sep_domain_emb:
+                self.pin_emb_tgt = nn.Embedding(n_pins, pin_emb_dim)
+                self.pin_emb_src = nn.Embedding(n_pins, pin_emb_dim)
+                self.pol_emb_tgt = nn.Embedding(2, pol_emb_dim)
+                self.pol_emb_src = nn.Embedding(2, pol_emb_dim)
+            else:
+                self.pin_emb = nn.Embedding(n_pins, pin_emb_dim)
+                self.pol_emb = nn.Embedding(2, pol_emb_dim)
+            if self.arc_cond_mode == "film":
+                self.film_tgt = nn.Linear(self.arc_dim, 2 * self.base_dim)
+                self.film_src = nn.Linear(self.arc_dim, 2 * self.base_dim)
+        extra_dim_tgt = self.arc_dim if (self.use_arc_cond and self.arc_cond_mode == "concat") else 0
+        extra_dim_src = self.arc_dim if (self.use_arc_cond and self.src_use_arc_cond and self.arc_cond_mode == "concat") else 0
+        self.mlp_tgt = self._make_mlp(in_dim, design_dim, hid, dropout, extra_dim=extra_dim_tgt)
+        self.mlp_src = self._make_mlp(in_dim, design_dim, hid, dropout, extra_dim=extra_dim_src)
 
     @staticmethod
-    def _make_mlp(in_dim, design_dim, hid, dropout):
+    def _make_mlp(in_dim, design_dim, hid, dropout, extra_dim=0):
         return nn.Sequential(
-            nn.Linear(in_dim + design_dim, hid),
+            nn.Linear(in_dim + design_dim + extra_dim, hid),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(hid, hid),
@@ -233,10 +314,42 @@ class SepCellDelayRegressor(nn.Module):
             nn.Linear(hid, 1),
         )
 
-    def forward(self, x, z, node="tgt"):
+    def forward(self, x, z, node="tgt", from_pin_id=None, to_pin_id=None, pol_id=None):
         if z.dim() == 1:
             z = z.unsqueeze(0)
-        h = th.cat([x, z], dim=1)
+        h_base = th.cat([x, z], dim=1)
+        h = h_base
+        apply_arc = self.use_arc_cond and (node == "tgt" or (node == "src" and self.src_use_arc_cond))
+        if apply_arc:
+            if from_pin_id is None or to_pin_id is None or pol_id is None:
+                raise ValueError("Arc conditioning enabled but from_pin_id/to_pin_id/pol_id is missing.")
+            if self.arc_sep_domain_emb:
+                if node == "tgt":
+                    af = self.pin_emb_tgt(from_pin_id)
+                    at = self.pin_emb_tgt(to_pin_id)
+                    ap = self.pol_emb_tgt(pol_id)
+                elif node == "src":
+                    af = self.pin_emb_src(from_pin_id)
+                    at = self.pin_emb_src(to_pin_id)
+                    ap = self.pol_emb_src(pol_id)
+                else:
+                    raise ValueError(f"Unknown node type: {node}")
+            else:
+                af = self.pin_emb(from_pin_id)
+                at = self.pin_emb(to_pin_id)
+                ap = self.pol_emb(pol_id)
+            arc_feat = th.cat([af, at, ap], dim=1)
+            if self.arc_cond_mode == "concat":
+                h = th.cat([h_base, arc_feat], dim=1)
+            elif self.arc_cond_mode == "film":
+                if node == "tgt":
+                    gb = self.film_tgt(arc_feat)
+                elif node == "src":
+                    gb = self.film_src(arc_feat)
+                else:
+                    raise ValueError(f"Unknown node type: {node}")
+                gamma, beta = gb.chunk(2, dim=1)
+                h = h_base * (1.0 + gamma) + beta
         if node == "tgt":
             return self.mlp_tgt(h).squeeze(-1)
         if node == "src":
@@ -252,15 +365,23 @@ def validate_cell(val_dl, enc, model, device, design_dim, *, z_dict=None, graph_
     r2_score = R2Score().to(device)
     total_loss = 0.0
     total_n = 0
-    for xb, yb, cts in val_dl:
+    for xb, yb, cts, from_pin_id, to_pin_id, pol_id in val_dl:
         xb = xb.to(device)
         yb = yb.to(device)
+        from_pin_id = from_pin_id.to(device)
+        to_pin_id = to_pin_id.to(device)
+        pol_id = pol_id.to(device)
         zb = build_z_batch(
             cts, device, design_dim,
             z_dict=z_dict, graph_cache=graph_cache, enc=enc,
             dedup=dedup
         )
-        pred = model(xb, zb, node="tgt")
+        pred = model(
+            xb, zb, node="tgt",
+            from_pin_id=from_pin_id,
+            to_pin_id=to_pin_id,
+            pol_id=pol_id,
+        )
         loss = loss_fn(pred, yb)
         total_loss += loss.item() * len(yb)
         total_n += len(yb)
@@ -296,14 +417,21 @@ def train_balanced_sep_mlp(options, seed):
         y_std = 1.0
 
     df_src_use = df_src if df_src is not None and len(df_src) > 0 else df_tgt_train
+    arc_vocab_scope = str(getattr(options, "arc_vocab_scope", "tgt")).lower()
+    if arc_vocab_scope == "src_tgt":
+        pin2id = _build_pin_vocab(df_src_use, df_tgt_train)
+    elif arc_vocab_scope == "tgt":
+        pin2id = _build_pin_vocab(df_tgt_train)
+    else:
+        raise ValueError(f"Unknown arc_vocab_scope: {arc_vocab_scope}")
 
-    ds_tgt = CellDelayDataset(df_tgt_train, x_mean, x_std, y_mean, y_std)
-    ds_src = CellDelayDataset(df_src_use, x_mean, x_std, y_mean, y_std)
-    val_ds = CellDelayDataset(df_tgt_val, x_mean, x_std, y_mean, y_std)
+    ds_tgt = CellDelayDataset(df_tgt_train, x_mean, x_std, y_mean, y_std, pin2id)
+    ds_src = CellDelayDataset(df_src_use, x_mean, x_std, y_mean, y_std, pin2id)
+    val_ds = CellDelayDataset(df_tgt_val, x_mean, x_std, y_mean, y_std, pin2id)
 
     def my_collate(batch):
-        xs, ys, cts = zip(*batch)
-        return th.stack(xs), th.stack(ys), cts
+        xs, ys, cts, fps, tps, pols = zip(*batch)
+        return th.stack(xs), th.stack(ys), cts, th.stack(fps), th.stack(tps), th.stack(pols)
 
     batch_size_tgt = max(1, options.batch_size // 2)
     batch_size_src = max(1, options.batch_size // (2 * max(1, options.sample_45_num)))
@@ -321,24 +449,61 @@ def train_balanced_sep_mlp(options, seed):
     design_dim = getattr(options, "design_dim", options.out_dim)
     hgat_hid = getattr(options, "hgat_hid", options.hidden_dim)
     hgat_heads = getattr(options, "hgat_heads", options.num_heads)
+    hgat_layers = getattr(options, "hgat_layers", 3)
+    hgat_dropout = getattr(options, "hgat_dropout", 0.1)
+    hgat_use_net_readout = getattr(options, "hgat_use_net_readout", False)
+    hgat_type_attn_readout = getattr(options, "hgat_type_attn_readout", False)
     dropout = getattr(options, "mlp_dropout", 0.0)
 
     in_map = {"NET": 4, "PMOS": 2, "NMOS": 2}
-    enc = HGATDesignEncoder(in_dim_map=in_map, hid=hgat_hid, out=design_dim, num_heads=hgat_heads).to(device)
-    model = SepCellDelayRegressor(in_dim=options.in_dim, design_dim=design_dim, hid=hgat_hid, dropout=dropout).to(
-        device
-    )
+    enc = HGATDesignEncoder(
+        in_dim_map=in_map,
+        hid=hgat_hid,
+        out=design_dim,
+        num_heads=hgat_heads,
+        num_layers=hgat_layers,
+        dropout=hgat_dropout,
+        use_net_readout=hgat_use_net_readout,
+        type_attn_readout=hgat_type_attn_readout,
+    ).to(device)
+    model = SepCellDelayRegressor(
+        in_dim=options.in_dim,
+        design_dim=design_dim,
+        hid=hgat_hid,
+        dropout=dropout,
+        num_pins=len(pin2id),
+        pin_emb_dim=getattr(options, "pin_emb_dim", 8),
+        pol_emb_dim=getattr(options, "pol_emb_dim", 2),
+        use_arc_cond=getattr(options, "use_arc_cond", False),
+        arc_sep_domain_emb=getattr(options, "arc_sep_domain_emb", False),
+        arc_cond_mode=getattr(options, "arc_cond_mode", "concat"),
+        src_use_arc_cond=not getattr(options, "disable_src_arc_cond", False),
+    ).to(device)
 
     if options.load_ckpt_path is not None:
         ckpt_path = options.load_ckpt_path
         if os.path.isdir(ckpt_path):
-            ckpt_path = os.path.join(ckpt_path, "model.pkl")
+            cand = os.path.join(ckpt_path, "ckpt_best.pt")
+            if os.path.exists(cand):
+                ckpt_path = cand
+            else:
+                cand = os.path.join(ckpt_path, "model.pkl")
+                if os.path.exists(cand):
+                    ckpt_path = cand
         if os.path.exists(ckpt_path):
-            with open(ckpt_path, "rb") as f:
-                _, model, enc = pickle.load(f)
-            model = model.to(device)
-            enc = enc.to(device)
-            print(f"[Info] Loaded model from {ckpt_path}")
+            if ckpt_path.endswith(".pt"):
+                ckpt = th.load(ckpt_path, map_location=device)
+                if "enc" in ckpt:
+                    enc.load_state_dict(ckpt["enc"])
+                if "model" in ckpt:
+                    model.load_state_dict(ckpt["model"])
+                print(f"[Info] Loaded ckpt from {ckpt_path}")
+            else:
+                with open(ckpt_path, "rb") as f:
+                    _, model, enc = pickle.load(f)
+                model = model.to(device)
+                enc = enc.to(device)
+                print(f"[Info] Loaded model.pkl from {ckpt_path}")
         else:
             print(f"[Warn] load_ckpt_path not found: {ckpt_path}")
 
@@ -369,8 +534,31 @@ def train_balanced_sep_mlp(options, seed):
 
     print("----------------Start training---------------")
     best_val = float("-inf")
+    best_epoch = -1
+    best_val_loss = float("inf")
+    best_ckpt_path = os.path.join(options.model_saving_dir, "ckpt_best.pt")
+    src_anneal_start = int(getattr(options, "src_loss_anneal_start", -1))
+    src_anneal_end = int(getattr(options, "src_loss_anneal_end", -1))
+    src_final_scale = float(getattr(options, "src_loss_final_scale", 1.0))
+
+    def _src_weight(epoch_idx_zero_based: int):
+        base = float(options.loss_weight_45)
+        if src_anneal_start < 1 or src_anneal_end < 1 or src_anneal_end <= src_anneal_start:
+            return base
+        ep = epoch_idx_zero_based + 1
+        if ep <= src_anneal_start:
+            return base
+        if ep >= src_anneal_end:
+            return base * src_final_scale
+        t = (ep - src_anneal_start) / float(src_anneal_end - src_anneal_start)
+        scale = 1.0 + t * (src_final_scale - 1.0)
+        return base * scale
+    early_stop_patience = max(0, int(getattr(options, "early_stop_patience", 0)))
+    early_stop_min_delta = float(getattr(options, "early_stop_min_delta", 0.0))
+    epochs_no_improve = 0
 
     for epoch in range(options.num_epoch):
+        cur_src_weight = _src_weight(epoch)
         if options.freeze_hgat:
             enc.eval()
         else:
@@ -381,38 +569,54 @@ def train_balanced_sep_mlp(options, seed):
         total_n = 0
 
         dl_src_iter = iter(dl_src)
-        for xb_tgt, yb_tgt, cts_tgt in dl_tgt:
+        for xb_tgt, yb_tgt, cts_tgt, fp_tgt, tp_tgt, pol_tgt in dl_tgt:
             xb_tgt = xb_tgt.to(device)
             yb_tgt = yb_tgt.to(device)
+            fp_tgt = fp_tgt.to(device)
+            tp_tgt = tp_tgt.to(device)
+            pol_tgt = pol_tgt.to(device)
             zb_tgt = build_z_batch(
                 cts_tgt, device, design_dim,
                 z_dict=z_dict_tgt, graph_cache=graph_cache_tgt, enc=enc,
                 dedup=options.dedup_z
             )
-            pred_tgt = model(xb_tgt, zb_tgt, node="tgt")
+            pred_tgt = model(
+                xb_tgt, zb_tgt, node="tgt",
+                from_pin_id=fp_tgt,
+                to_pin_id=tp_tgt,
+                pol_id=pol_tgt,
+            )
             loss_tgt = loss_fn(pred_tgt, yb_tgt)
 
             loss_src_list = []
             for _ in range(max(1, options.sample_45_num)):
                 try:
-                    xb_src, yb_src, cts_src = next(dl_src_iter)
+                    xb_src, yb_src, cts_src, fp_src, tp_src, pol_src = next(dl_src_iter)
                 except StopIteration:
                     dl_src_iter = iter(dl_src)
-                    xb_src, yb_src, cts_src = next(dl_src_iter)
+                    xb_src, yb_src, cts_src, fp_src, tp_src, pol_src = next(dl_src_iter)
                 xb_src = xb_src.to(device)
                 yb_src = yb_src.to(device)
+                fp_src = fp_src.to(device)
+                tp_src = tp_src.to(device)
+                pol_src = pol_src.to(device)
                 zb_src = build_z_batch(
                     cts_src, device, design_dim,
                     z_dict=z_dict_src, graph_cache=graph_cache_src, enc=enc,
                     dedup=options.dedup_z
                 )
-                pred_src = model(xb_src, zb_src, node="src")
+                pred_src = model(
+                    xb_src, zb_src, node="src",
+                    from_pin_id=fp_src,
+                    to_pin_id=tp_src,
+                    pol_id=pol_src,
+                )
                 loss_src = loss_fn(pred_src, yb_src)
                 loss_src_list.append(loss_src)
 
             total_loss_batch = (
                 loss_tgt * batch_size_tgt +
-                options.loss_weight_45 * sum(loss_src_list) * batch_size_src
+                cur_src_weight * sum(loss_src_list) * batch_size_src
             ) / (batch_size_tgt + len(loss_src_list) * batch_size_src)
 
             optimizer.zero_grad()
@@ -432,15 +636,56 @@ def train_balanced_sep_mlp(options, seed):
         )
 
         print(f"e{epoch}, train_loss:{train_loss:.4f}, r2:{train_r2:.3f}, "
-              f"val_loss:{val_loss:.4f}, val_r2:{val_r2:.3f}")
+              f"val_loss:{val_loss:.4f}, val_r2:{val_r2:.3f}, src_w:{cur_src_weight:.4f}")
 
-        if val_r2 > best_val:
+        if val_r2 > (best_val + early_stop_min_delta):
             best_val = val_r2
+            best_epoch = epoch + 1
+            best_val_loss = val_loss
+            epochs_no_improve = 0
             os.makedirs(options.model_saving_dir, exist_ok=True)
-            with open(os.path.join(options.model_saving_dir, 'model.pkl'), 'wb') as f:
-                parameters = options
-                pickle.dump((parameters, model, enc), f)
+            th.save(
+                {
+                    "enc": enc.state_dict(),
+                    "model": model.state_dict(),
+                    "design_dim": design_dim,
+                    "hgat_hid": hgat_hid,
+                    "hgat_heads": hgat_heads,
+                    "hgat_use_net_readout": hgat_use_net_readout,
+                    "hgat_type_attn_readout": hgat_type_attn_readout,
+                    "pin2id": pin2id,
+                    "use_arc_cond": getattr(options, "use_arc_cond", False),
+                    "pin_emb_dim": getattr(options, "pin_emb_dim", 8),
+                    "pol_emb_dim": getattr(options, "pol_emb_dim", 2),
+                    "arc_vocab_scope": arc_vocab_scope,
+                    "arc_sep_domain_emb": getattr(options, "arc_sep_domain_emb", False),
+                    "arc_cond_mode": getattr(options, "arc_cond_mode", "concat"),
+                    "disable_src_arc_cond": getattr(options, "disable_src_arc_cond", False),
+                    "scaler_stats": scaler_stats,
+                    "y_scaler": y_scaler,
+                    "epoch": epoch + 1,
+                    "best_val_r2": best_val,
+                    "src_weight_at_best": cur_src_weight,
+                },
+                best_ckpt_path,
+            )
             print("Model successfully saved")
+        else:
+            epochs_no_improve += 1
+
+        if early_stop_patience > 0 and epochs_no_improve >= early_stop_patience:
+            print(
+                f"[EarlyStop] stop at epoch:{epoch + 1}, "
+                f"best_epoch:{best_epoch}, best_val_r2:{best_val:.4f}, "
+                f"patience:{early_stop_patience}, min_delta:{early_stop_min_delta}"
+            )
+            break
+
+    if best_epoch > 0:
+        print(
+            f"[Best] epoch:{best_epoch}, val_r2:{best_val:.4f}, "
+            f"val_loss:{best_val_loss:.6f}, ckpt:{best_ckpt_path}"
+        )
 
 
 

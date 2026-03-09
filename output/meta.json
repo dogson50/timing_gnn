@@ -93,23 +93,23 @@
     }
   },
   "split_info": {
-    "split_mode": "stratified",
+    "split_mode": "random",
     "ratios": [
       0.14,
       0.14,
       0.72
     ],
     "seed": 42,
-    "num_tgt_train_pool": 987,
-    "num_tgt_val": 987,
-    "num_tgt_test": 5178
+    "num_tgt_train_pool": 1001,
+    "num_tgt_val": 1001,
+    "num_tgt_test": 5150
   },
   "stats": {
     "num_src": 7607,
-    "num_tgt_train_labeled": 888,
-    "num_tgt_train_unlabeled": 99,
-    "num_tgt_val": 987,
-    "num_tgt_test": 5178
+    "num_tgt_train_labeled": 900,
+    "num_tgt_train_unlabeled": 101,
+    "num_tgt_val": 1001,
+    "num_tgt_test": 5150
   },
   "feature_cols": [
     "cell_type",

@@ -285,11 +285,51 @@ def train(options, seed):
     design_dim = getattr(options, "design_dim", options.out_dim)
     hgat_hid = getattr(options, "hgat_hid", options.hidden_dim)
     hgat_heads = getattr(options, "hgat_heads", options.num_heads)
+    hgat_layers = getattr(options, "hgat_layers", 2)
+    hgat_dropout = getattr(options, "hgat_dropout", 0.1)
+    hgat_use_net_readout = getattr(options, "hgat_use_net_readout", False)
+    hgat_type_attn_readout = getattr(options, "hgat_type_attn_readout", False)
     dropout = getattr(options, "mlp_dropout", 0.0)
 
     in_map = {"NET": 4, "PMOS": 2, "NMOS": 2}
-    enc = HGATDesignEncoder(in_dim_map=in_map, hid=hgat_hid, out=design_dim, num_heads=hgat_heads).to(device)
+    enc = HGATDesignEncoder(
+        in_dim_map=in_map,
+        hid=hgat_hid,
+        out=design_dim,
+        num_heads=hgat_heads,
+        num_layers=hgat_layers,
+        dropout=hgat_dropout,
+        use_net_readout=hgat_use_net_readout,
+        type_attn_readout=hgat_type_attn_readout,
+    ).to(device)
     model = CellDelayRegressor(in_dim=options.in_dim, design_dim=design_dim, hid=hgat_hid, dropout=dropout).to(device)
+
+    if options.load_ckpt_path is not None:
+        ckpt_path = options.load_ckpt_path
+        if os.path.isdir(ckpt_path):
+            cand = os.path.join(ckpt_path, "ckpt_best.pt")
+            if os.path.exists(cand):
+                ckpt_path = cand
+            else:
+                cand = os.path.join(ckpt_path, "model.pkl")
+                if os.path.exists(cand):
+                    ckpt_path = cand
+        if os.path.exists(ckpt_path):
+            if ckpt_path.endswith(".pt"):
+                ckpt = th.load(ckpt_path, map_location=device)
+                if "enc" in ckpt:
+                    enc.load_state_dict(ckpt["enc"])
+                if "model" in ckpt:
+                    model.load_state_dict(ckpt["model"])
+                print(f"[Info] Loaded ckpt from {ckpt_path}")
+            else:
+                with open(ckpt_path, "rb") as f:
+                    _, model, enc = pickle.load(f)
+                model = model.to(device)
+                enc = enc.to(device)
+                print(f"[Info] Loaded model.pkl from {ckpt_path}")
+        else:
+            print(f"[Warn] load_ckpt_path not found: {ckpt_path}")
 
     print("----------------Loading HGAT embeddings----------------")
     z_dict = None
@@ -312,6 +352,9 @@ def train(options, seed):
 
     print("----------------Start training---------------")
     best_val = float("inf")
+    best_epoch = -1
+    best_val_r2 = float("-inf")
+    best_ckpt_path = os.path.join(options.model_saving_dir, "ckpt_best.pt")
     for epoch in range(options.num_epoch):
         if options.freeze_hgat:
             enc.eval()
@@ -370,6 +413,8 @@ def train(options, seed):
 
         if val_loss < best_val:
             best_val = val_loss
+            best_epoch = epoch + 1
+            best_val_r2 = val_r2
             if os.path.exists(options.model_saving_dir) is False:
                 os.makedirs(options.model_saving_dir)
             th.save({
@@ -382,7 +427,13 @@ def train(options, seed):
                 "y_scaler": y_scaler,
                 "epoch": epoch + 1,
                 "best_val_loss": best_val,
-            }, os.path.join(options.model_saving_dir, "ckpt_best.pt"))
+            }, best_ckpt_path)
+
+    if best_epoch > 0:
+        print(
+            f"[Best] epoch:{best_epoch}, val_loss:{best_val:.6f}, "
+            f"val_r2:{best_val_r2:.4f}, ckpt:{best_ckpt_path}"
+        )
 
         # end = time()
         # runtime += end-start

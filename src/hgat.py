@@ -8,31 +8,102 @@ try:
 except Exception as e:
     raise ImportError("DGL is required for HGAT. Please install dgl (CPU/GPU).")
 
+
+class HGATBlock(nn.Module):
+    def __init__(self, hid, rels, num_heads=1, dropout=0.1):
+        super().__init__()
+        self.conv = HeteroGraphConv(
+            {r: GATConv(hid, hid, num_heads=num_heads, feat_drop=dropout, attn_drop=dropout) for r in rels},
+            aggregate='sum'
+        )
+        self.norm = nn.ModuleDict()
+        self.dropout = nn.Dropout(dropout)
+        self.hid = hid
+
+    def _get_norm(self, nt, device):
+        if nt not in self.norm:
+            self.norm[nt] = nn.LayerNorm(self.hid)
+            self.norm[nt].to(device)
+        return self.norm[nt]
+
+    def forward(self, g, h):
+        out = self.conv(g, h)
+        out = {k: v.mean(1) for k, v in out.items()}
+        h_new = {}
+        for nt, v in out.items():
+            residual = h.get(nt)
+            if residual is not None and residual.shape == v.shape:
+                v = v + residual
+            norm = self._get_norm(nt, v.device)
+            v = norm(v)
+            v = F.relu(v)
+            v = self.dropout(v)
+            h_new[nt] = v
+        return h_new
+
 class HGATDesignEncoder(nn.Module):
-    def __init__(self, in_dim_map, hid=64, out=64, num_heads=1):
+    def __init__(
+        self,
+        in_dim_map,
+        hid=64,
+        out=64,
+        num_heads=1,
+        num_layers=3,
+        dropout=0.1,
+        use_net_readout=False,
+        type_attn_readout=False,
+    ):
         super().__init__()
         rels = ["gate_of", "sd_to", "back_sd"]
         self.embed = nn.ModuleDict({nt: nn.Linear(in_dim_map[nt], hid) for nt in in_dim_map})
-        self.layer1 = HeteroGraphConv({r: GATConv(hid, hid, num_heads=num_heads) for r in rels}, aggregate='sum')
-        self.layer2 = HeteroGraphConv({r: GATConv(hid, hid, num_heads=num_heads) for r in rels}, aggregate='sum')
-        self.readout = nn.Sequential(nn.Linear(hid, out), nn.ReLU(), nn.Linear(out, out))
+        self.use_net_readout = bool(use_net_readout)
+        self.type_attn_readout = bool(type_attn_readout)
+        self.summary_dim = 3 * hid
+        self.layers = nn.ModuleList([
+            HGATBlock(hid=hid, rels=rels, num_heads=num_heads, dropout=dropout)
+            for _ in range(max(1, int(num_layers)))
+        ])
+        if self.type_attn_readout:
+            self.type_gate = nn.Linear(self.summary_dim, 1)
+        readout_in = self.summary_dim
+        self.readout = nn.Sequential(
+            nn.Linear(readout_in, out),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(out, out)
+        )
+
+    def _summarize_hidden(self, h):
+        summaries = []
+        ntypes = ["PMOS", "NMOS"] + (["NET"] if self.use_net_readout else [])
+        for nt in ntypes:
+            if nt in h and h[nt].shape[0] > 0:
+                x = h[nt]
+                mean_v = x.mean(dim=0, keepdim=True)
+                max_v = x.max(dim=0, keepdim=True).values
+                std_v = x.std(dim=0, keepdim=True, unbiased=False)
+                summaries.append(torch.cat([mean_v, max_v, std_v], dim=1))
+        if len(summaries) == 0:
+            for v in h.values():
+                mean_v = v.mean(dim=0, keepdim=True)
+                max_v = v.max(dim=0, keepdim=True).values
+                std_v = v.std(dim=0, keepdim=True, unbiased=False)
+                summaries.append(torch.cat([mean_v, max_v, std_v], dim=1))
+
+        s = torch.cat(summaries, dim=0)
+        if self.type_attn_readout and s.shape[0] > 1:
+            w = torch.softmax(self.type_gate(s), dim=0)
+            z = (w * s).sum(dim=0)
+        else:
+            z = s.mean(dim=0)
+        return z
 
     def forward(self, g, feats):
         h = {nt: self.embed[nt](feats[nt]) for nt in feats}
-        h = self.layer1(g, h)
-        h = {k: v.mean(1) for k, v in h.items()}
-        h = {k: torch.relu(v) for k, v in h.items()}
-        h = self.layer2(g, h)
-        h = {k: v.mean(1) for k, v in h.items()}
-        mos = []
-        for nt in ["PMOS", "NMOS"]:
-            if nt in h and h[nt].shape[0] > 0:
-                mos.append(h[nt].mean(dim=0, keepdim=True))
-        if len(mos) == 0:
-            mos = [v.mean(dim=0, keepdim=True) for v in h.values()]
-        z = torch.mean(torch.cat(mos, dim=0), dim=0)
+        for layer in self.layers:
+            h = layer(g, h)
+        z = self._summarize_hidden(h)
         z = self.readout(z)
-        # ★ 新增：L2 归一化，使设计嵌入的尺度受控
         z = F.normalize(z, dim=0)
         return z
 # hgat.py - 追加以下辅助函数（直接复用 train_hgat.py 的逻辑）
@@ -71,30 +142,33 @@ def build_dgl_graph_from_devs(devs, top_pins):
 
     g = dgl.heterograph(data_dict, num_nodes_dict={'NET': len(nets), 'PMOS': p_count, 'NMOS': n_count})
 
+    deg = np.zeros(len(nets), dtype=np.float32)
+    for src, dst in ((sd_src_p, sd_dst_p), (sd_src_n, sd_dst_n)):
+        for nid in dst:
+            deg[int(nid)] += 1.0
+    for src, dst in ((gate_src_p, gate_dst_p), (gate_src_n, gate_dst_n)):
+        for nid in src:
+            deg[int(nid)] += 1.0
+    max_deg = float(max(1.0, deg.max() if deg.size > 0 else 1.0))
+
+    top_pin_set = set(str(p).upper() for p in (top_pins or []))
     f_net = []
     for name, nid in sorted(nets.items(), key=lambda x:x[1]):
-        is_vdd = 1.0 if name.upper()=="VDD" else 0.0
-        is_vss = 1.0 if name.upper()=="VSS" else 0.0
-        is_a   = 1.0 if name.upper()=="A" else 0.0
-        is_y   = 1.0 if name.upper() in ("Y","ZN") else 0.0
-        f_net.append([is_vdd,is_vss,is_a,is_y])
+        up = name.upper()
+        is_vdd = 1.0 if up in ("VDD", "VPWR", "VCC") else 0.0
+        is_vss = 1.0 if up in ("VSS", "VGND", "GND") else 0.0
+        is_top_pin = 1.0 if up in top_pin_set else 0.0
+        deg_norm = float(np.log1p(deg[nid]) / np.log1p(max_deg))
+        f_net.append([is_vdd, is_vss, is_top_pin, deg_norm])
     f_net = torch.tensor(np.array(f_net, dtype=np.float32))
 
     def mos_feats(list_dev):
         arr = []
-        # ¼òµ¥µÄÓ²±àÂë¹éÒ»»¯£¬»ùÓÚ¾­ÑéÖµ
-        # Nangate45: L_min ~ 50nm = 0.05um
-        # ASAP7: L_min ~ 20nm (Gate length) »ò 7nm (Fin width)
-        # ½¨Òé: ¶ÔÊý±ä»»¿ÉÄÜ±ÈÏßÐÔËõ·Å¸üÂ³°ô
         for d in list_dev:
             raw_W = d["W"] if d["W"] is not None else 1e-7
             raw_L = d["L"] if d["L"] is not None else 1e-7
-
-            # ·½°¸ A: È¡¶ÔÊý (Log-Scale)£¬¶Ô¿çÊýÁ¿¼¶²îÒì¼«ÆäÓÐÐ§
-            # ¼ÓÉÏ 1e-9 ·ÀÖ¹ log(0)
             w_feat = np.log10(raw_W + 1e-9)
             l_feat = np.log10(raw_L + 1e-9)
-
             arr.append([w_feat, l_feat])
         if len(arr)==0:
             return torch.zeros((0,2), dtype=torch.float32)

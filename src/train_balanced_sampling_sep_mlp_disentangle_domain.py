@@ -399,11 +399,24 @@ def train_balanced_sep_mlp_disentangle_domain(options, seed):
     design_dim = getattr(options, "design_dim", options.out_dim)
     hgat_hid = getattr(options, "hgat_hid", options.hidden_dim)
     hgat_heads = getattr(options, "hgat_heads", options.num_heads)
+    hgat_layers = getattr(options, "hgat_layers", 2)
+    hgat_dropout = getattr(options, "hgat_dropout", 0.1)
+    hgat_use_net_readout = getattr(options, "hgat_use_net_readout", False)
+    hgat_type_attn_readout = getattr(options, "hgat_type_attn_readout", False)
     dropout = getattr(options, "mlp_dropout", 0.0)
     node_feat_dim = getattr(options, "node_feat_dim", 128)
 
     in_map = {"NET": 4, "PMOS": 2, "NMOS": 2}
-    enc = HGATDesignEncoder(in_dim_map=in_map, hid=hgat_hid, out=design_dim, num_heads=hgat_heads).to(device)
+    enc = HGATDesignEncoder(
+        in_dim_map=in_map,
+        hid=hgat_hid,
+        out=design_dim,
+        num_heads=hgat_heads,
+        num_layers=hgat_layers,
+        dropout=hgat_dropout,
+        use_net_readout=hgat_use_net_readout,
+        type_attn_readout=hgat_type_attn_readout,
+    ).to(device)
     model = DisentangleCellDelayRegressor(
         in_dim=options.in_dim,
         design_dim=design_dim,
@@ -415,13 +428,27 @@ def train_balanced_sep_mlp_disentangle_domain(options, seed):
     if options.load_ckpt_path is not None:
         ckpt_path = options.load_ckpt_path
         if os.path.isdir(ckpt_path):
-            ckpt_path = os.path.join(ckpt_path, "model.pkl")
+            cand = os.path.join(ckpt_path, "ckpt_best.pt")
+            if os.path.exists(cand):
+                ckpt_path = cand
+            else:
+                cand = os.path.join(ckpt_path, "model.pkl")
+                if os.path.exists(cand):
+                    ckpt_path = cand
         if os.path.exists(ckpt_path):
-            with open(ckpt_path, "rb") as f:
-                _, model, enc = pickle.load(f)
-            model = model.to(device)
-            enc = enc.to(device)
-            print(f"[Info] Loaded model from {ckpt_path}")
+            if ckpt_path.endswith(".pt"):
+                ckpt = th.load(ckpt_path, map_location=device)
+                if "enc" in ckpt:
+                    enc.load_state_dict(ckpt["enc"])
+                if "model" in ckpt:
+                    model.load_state_dict(ckpt["model"])
+                print(f"[Info] Loaded ckpt from {ckpt_path}")
+            else:
+                with open(ckpt_path, "rb") as f:
+                    _, model, enc = pickle.load(f)
+                model = model.to(device)
+                enc = enc.to(device)
+                print(f"[Info] Loaded model.pkl from {ckpt_path}")
         else:
             print(f"[Warn] load_ckpt_path not found: {ckpt_path}")
 
@@ -452,6 +479,9 @@ def train_balanced_sep_mlp_disentangle_domain(options, seed):
 
     print("----------------Start training---------------")
     best_val = float("-inf")
+    best_epoch = -1
+    best_val_loss = float("inf")
+    best_ckpt_path = os.path.join(options.model_saving_dir, "ckpt_best.pt")
 
     for epoch in range(options.num_epoch):
         if options.freeze_hgat:
@@ -462,6 +492,10 @@ def train_balanced_sep_mlp_disentangle_domain(options, seed):
         r2_score.reset()
         total_loss = 0.0
         total_n = 0
+        reg_loss_sum = 0.0
+        clr_loss_sum = 0.0
+        cmd_loss_sum = 0.0
+        batch_cnt = 0
 
         dl_src_iter = iter(dl_src)
         for xb_tgt, yb_tgt, cts_tgt in dl_tgt:
@@ -520,6 +554,10 @@ def train_balanced_sep_mlp_disentangle_domain(options, seed):
             total_loss_batch.backward()
             optimizer.step()
 
+            reg_loss_sum += reg_loss.item()
+            clr_loss_sum += clr_loss.item()
+            cmd_loss_sum += cmd_loss_v.item()
+            batch_cnt += 1
             total_loss += total_loss_batch.item() * len(yb_tgt)
             total_n += len(yb_tgt)
             r2_score.update(pred_tgt, yb_tgt)
@@ -532,16 +570,41 @@ def train_balanced_sep_mlp_disentangle_domain(options, seed):
             z_dict=z_dict_tgt, graph_cache=graph_cache_tgt, dedup=options.dedup_z
         )
 
-        print(f"e{epoch}, train_loss:{train_loss:.4f}, r2:{train_r2:.3f}, "
-              f"val_loss:{val_loss:.4f}, val_r2:{val_r2:.3f}")
+        avg_reg = reg_loss_sum / max(1, batch_cnt)
+        avg_clr = clr_loss_sum / max(1, batch_cnt)
+        avg_cmd = cmd_loss_sum / max(1, batch_cnt)
+        print(
+            f"e{epoch}, train_loss:{train_loss:.4f}, r2:{train_r2:.3f}, "
+            f"val_loss:{val_loss:.4f}, val_r2:{val_r2:.3f}, "
+            f"reg:{avg_reg:.4f}, clr:{avg_clr:.4f}, cmd:{avg_cmd:.4f}"
+        )
 
         if val_r2 > best_val:
             best_val = val_r2
+            best_epoch = epoch + 1
+            best_val_loss = val_loss
             os.makedirs(options.model_saving_dir, exist_ok=True)
-            with open(os.path.join(options.model_saving_dir, 'model.pkl'), 'wb') as f:
-                parameters = options
-                pickle.dump((parameters, model, enc), f)
+            th.save(
+                {
+                    "enc": enc.state_dict(),
+                    "model": model.state_dict(),
+                    "design_dim": design_dim,
+                    "hgat_hid": hgat_hid,
+                    "hgat_heads": hgat_heads,
+                    "scaler_stats": scaler_stats,
+                    "y_scaler": y_scaler,
+                    "epoch": epoch + 1,
+                    "best_val_r2": best_val,
+                },
+                best_ckpt_path,
+            )
             print("Model successfully saved")
+
+    if best_epoch > 0:
+        print(
+            f"[Best] epoch:{best_epoch}, val_r2:{best_val:.4f}, "
+            f"val_loss:{best_val_loss:.6f}, ckpt:{best_ckpt_path}"
+        )
 
 
 if __name__ == "__main__":
