@@ -1,0 +1,172 @@
+\documentclass[12pt,a4paper]{ctexart}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{hyperref}
+
+\title{研一下第一周组会汇报}
+\author{ }
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{本周基线定义}
+本周将 \texttt{src/train\_balanced\_sampling\_sep\_mlp.py} 的 \textbf{concat + NET readout} 版本作为基线。
+其中 HGAT 关键配置口径为：
+\begin{itemize}
+  \item 多层 HGAT（\texttt{hgat\_layers}）与层内 dropout（\texttt{hgat\_dropout}）；
+  \item readout 支持 NET 统计特征（\texttt{hgat\_use\_net\_readout}）；
+  \item 可选节点类型注意力融合（\texttt{hgat\_type\_attn\_readout}，当前实验中可关闭）；
+  \item arc 条件化主线采用 \texttt{concat} 模式（即将 arc embedding 与 \(x,z\) 拼接回归）。
+\end{itemize}
+
+\section{HGAT 本周改动点（相对早期版本）}
+\subsection{编码器结构}
+\begin{itemize}
+  \item 引入块级残差 + LayerNorm + Dropout（\texttt{HGATBlock}）。
+  \item 编码器支持可配置层数（\texttt{num\_layers}）和 dropout。
+\end{itemize}
+
+\subsection{图特征与读出}
+\begin{itemize}
+  \item NET 特征从简单占位增强为：\texttt{is\_vdd/is\_vss/is\_top\_pin/deg\_norm}。
+  \item MOS 特征保持 \(\log W\) 与 \(\log L\)。
+  \item 读出由单均值扩展为统计读出（mean/max/std），并支持是否纳入 NET 读出。
+\end{itemize}
+
+\subsection{训练脚本接线统一}
+README 中涉及的训练脚本均已统一为同一 HGAT 初始化口径（支持上述参数）：
+\begin{itemize}
+  \item \texttt{src/train.py}
+  \item \texttt{src/train\_base\_pt\_ft.py}
+  \item \texttt{src/train\_balanced\_sampling.py}
+  \item \texttt{src/train\_balanced\_sampling\_sep\_mlp.py}
+  \item \texttt{src/train\_balanced\_sampling\_sep\_mlp\_disentangle\_cell\_type.py}
+  \item \texttt{src/train\_balanced\_sampling\_sep\_mlp\_disentangle\_domain.py}
+  \item \texttt{src/train\_balanced\_sampling\_sep\_mlp\_bayesian.py}
+\end{itemize}
+
+\begin{itemize}
+  \item \texttt{src/train\_balanced\_sampling\_sep\_mlp\_shared\_calib.py}
+\end{itemize}
+对齐到同一 HGAT 版本。
+
+\section{脚本差异说明}
+\subsection{\texttt{shared\_calib} 相对 \texttt{sep\_mlp}}
+\texttt{src/train\_balanced\_sampling\_sep\_mlp\_shared\_calib.py} 相对
+\texttt{src/train\_balanced\_sampling\_sep\_mlp.py} 的核心差异：
+\begin{itemize}
+  \item 回归头结构改为共享主干 + 域校正（calibration）分支，而非完全分离的双头 MLP。
+  \item 训练目标仍是 src/tgt 平衡采样回归，但通过共享与校正分工来减少参数冗余。
+  \item HGAT 编码器、图缓存与 freeze/unfreeze 流程与主线脚本保持一致口径。
+\end{itemize}
+
+\subsection{\texttt{disentangle\_domain} 相对 \texttt{sep\_mlp}}
+\texttt{src/train\_balanced\_sampling\_sep\_mlp\_disentangle\_domain.py} 在主线回归损失外，增加解耦约束：
+\begin{itemize}
+  \item 将表示拆分为 design/process 子空间；
+  \item 对 process 子空间施加域相关约束（如对比学习项），对 design 子空间施加分布对齐项（如 CMD）；
+  \item 总损失 = 回归损失 + \(\lambda_{clr}\) 对比项 + \(\lambda_{cmd}\) 对齐项。
+\end{itemize}
+
+\subsection{\texttt{disentangle\_domain} 相对 \texttt{sep\_mlp}}
+\texttt{src/train\_balanced\_sampling\_sep\_mlp\_disentangle\_domain.py} 相对
+\texttt{src/train\_balanced\_sampling\_sep\_mlp.py} 的核心修改为在主线回归上叠加域解耦约束：
+\begin{itemize}
+  \item 模型输出从单一回归分支扩展为回归预测 + 表示分解（design/process）分支；
+  \item 在每个 batch 中基于 src/tgt 配对，增加域相关对比约束（CLR）与分布对齐约束（CMD）；
+  \item 总损失从纯回归损失扩展为
+  \(\mathcal{L}_{reg} + \lambda_{clr}\mathcal{L}_{clr} + \lambda_{cmd}\mathcal{L}_{cmd}\)；
+  \item 其余流程（HGAT 编码、图缓存、平衡采样主循环）与 \texttt{sep\_mlp} 主线保持一致。
+\end{itemize}
+
+\subsection{\texttt{bayesian} 相对 \texttt{sep\_mlp}}
+\texttt{src/train\_balanced\_sampling\_sep\_mlp\_bayesian.py} 相对
+\texttt{src/train\_balanced\_sampling\_sep\_mlp.py} 的主要修改如下：
+\begin{itemize}
+	\item 在回归头末层由确定性线性层改为贝叶斯线性层（参数为分布，训练时采样权重）；
+	\item 在原有回归损失基础上可选加入 KL 正则（\texttt{--kl}、\texttt{--weight\_kl}、\texttt{--kl\_start\_ep}）；
+	\item 验证阶段支持 MC 多次采样并取均值预测（\texttt{--mc\_num}、\texttt{--test\_bayesian}）；
+	\item HGAT 编码、arc 条件化、平衡采样和数据接口与 \texttt{sep\_mlp} 主线保持一致，确保可直接同口径对照。
+\end{itemize}
+
+\section{运行结果对照表}
+\renewcommand{\arraystretch}{1.2}
+\begin{table}[!htbp]
+	\centering
+	\small
+	\setlength{\tabcolsep}{10pt}
+	\begin{tabular}{>{\raggedright\arraybackslash}p{0.48\textwidth}cc}
+		\toprule
+		模型别名 & 不冻结 $R^2$ & 冻结$R^2$ \\
+		\midrule
+		sampling & \underline{0.855} & \underline{0.858} \\
+		sep\_mlp & \underline{0.853} & \underline{0.831} \\
+		disentangle\_domain.py & \underline{0.824} & \underline{0.821} \\
+		
+		\bottomrule
+	\end{tabular}
+	\caption{本周改动HGAT之前冻结与不冻结HGAT的$R^2$对比（hgat\_layers=2）}
+\end{table}
+
+\noindent\textbf{别名与脚本映射：}
+\begin{itemize}
+	\item sampling $\rightarrow$ \texttt{train\_balanced\_sampling.py}
+	\item sep\_mlp $\rightarrow$ \texttt{train\_balanced\_sampling\_sep\_mlp.py}
+	\item disentangle\_domain $\rightarrow$ \texttt{train\_balanced\_sampling\_sep\_mlp\_disentangle\_domain.py}
+	
+	
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{10pt}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.48\textwidth}cc}
+\toprule
+模型别名 & 验证集 $R^2$ & 验证集 Loss \\
+\midrule
+sep\_mlp（concat + NET readout） & \underline{0.8621} & \underline{0.140017} \\
+shared\_calib & \underline{0.8739} & \underline{0.128001} \\
+disentangle\_domain & \underline{0.7774} & \underline{0.225947} \\
+disentangle\_cell\_type & \underline{0.7774} & \underline{0.225947} \\
+bayesian  & \underline{0.8662} & \underline{0.135781} \\           
+\bottomrule
+\end{tabular}
+\caption{各脚本验证集结果对照（hgat\_layers=2）}
+\end{table}
+
+\noindent\textbf{别名与脚本映射：}
+\begin{itemize}
+  \item sep\_mlp $\rightarrow$ \texttt{train\_balanced\_sampling\_sep\_mlp.py}
+  \item shared\_calib $\rightarrow$ \texttt{train\_balanced\_sampling\_sep\_mlp\_shared\_calib.py}
+  \item disentangle\_domain $\rightarrow$ \texttt{train\_balanced\_sampling\_sep\_mlp\_disentangle\_domain.py}
+  \item disentangle\_cell\_type $\rightarrow$ \texttt{train\_balanced\_sampling\_sep\_mlp\_disentangle\_cell\_type.py}
+  \item bayesian $\rightarrow$ \texttt{train\_balanced\_sampling\_sep\_mlp\_bayesian.py}
+\end{itemize}
+
+\begin{table}[htbp]
+	\centering
+	\small
+	\setlength{\tabcolsep}{10pt}
+	\begin{tabular}{>{\raggedright\arraybackslash}p{0.48\textwidth}cc}
+		\toprule
+		hgat\_layers & 验证集 $R^2$ & 验证集 Loss \\
+		\midrule
+		1 & \underline{0.8414} & \underline{0.161019} \\
+		2 & \underline{0.8621} & \underline{0.140017} \\
+		3 & \underline{0.8684} & \underline{0.133551} \\
+		4 & \underline{0.8690} & \underline{0.133027} \\
+		5 & \underline{0.8694} & \underline{0.132526} \\
+		\bottomrule
+	\end{tabular}
+	\caption{HGAT消息传递层数与训练结果关系（以train\_balanced\_sampling\_sep\_mlp.py为例）}
+\end{table}
+
+
+
+
+\end{document}
