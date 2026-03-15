@@ -50,7 +50,7 @@ SRC_CELL_SPI_FILES = {
     "AND2X4": "AND2_X4_lpe.spi",
     "AND3X1": "AND3_X1_lpe.spi",
     "AND3X2": "AND3_X2_lpe.spi",
-    "AND3X4": "AND2_X4_lpe.spi",
+    "AND3X4": "AND3_X4_lpe.spi",
     "AND4X1": "AND4_X1_lpe.spi",
     "AND4X2": "AND4_X2_lpe.spi",
     "BUFX2": "BUF_X2_lpe.spi",
@@ -121,6 +121,34 @@ ZERO_SPI_FEATS = {
     "wn_sum": 0.0,
     "wp_over_wn": 0.0,
 }
+
+
+def summarize_data_sources(data_root: str) -> Dict[str, object]:
+    root = Path(data_root)
+    files = [p for p in root.rglob("*") if p.is_file()] if root.exists() else []
+    ext_counts: Dict[str, int] = {}
+    bytes_total = 0
+    subckt_total = 0
+    mos_total = 0
+    nfin_files = 0
+    for p in files:
+        ext = p.suffix.lower()
+        ext_counts[ext] = ext_counts.get(ext, 0) + 1
+        bytes_total += int(p.stat().st_size)
+        if ext in {".sp", ".spi", ".lib"}:
+            txt = p.read_text(encoding="utf-8", errors="ignore")
+            subckt_total += len(re.findall(r"(?im)^\s*\.subckt\b", txt))
+            mos_total += len(re.findall(r"(?im)^\s*M\S*\s+", txt))
+            if re.search(r"(?im)\bnfin\s*=", txt):
+                nfin_files += 1
+    return {
+        "files_total": len(files),
+        "bytes_total": bytes_total,
+        "extension_counts": ext_counts,
+        "nfin_files": nfin_files,
+        "subckt_total": subckt_total,
+        "mos_line_total": mos_total,
+    }
 
 
 # ======================================================
@@ -797,6 +825,7 @@ def main():
         },
         "feature_cols": feature_cols,
         "cell_types": TARGET_CELL_TYPES,
+        "data_source_summary": summarize_data_sources("data"),
     }
 
     meta_path = os.path.join(args.out_dir, "meta.json")
