@@ -12,8 +12,8 @@ import numpy as np
 import pandas as pd
 
 # ¼ÙÉèÕâÐ©¿âÎÄ¼þºÍÄã±¾µØ»·¾³Ò»ÖÂ
-from parse_lib import parse_cell_arcs
-from spi2graph import parse_transistors_spice, extract_wl_features
+from parse_lib import normalize_arc_condition, parse_cell_arcs
+from spi2graph import extract_wl_features, flatten_subckt_hierarchy, parse_transistors_spice
 from options import get_options
 
 # ======================================================
@@ -50,7 +50,7 @@ SRC_CELL_SPI_FILES = {
     "AND2X4": "AND2_X4_lpe.spi",
     "AND3X1": "AND3_X1_lpe.spi",
     "AND3X2": "AND3_X2_lpe.spi",
-    "AND3X4": "AND2_X4_lpe.spi",
+    "AND3X4": "AND3_X4_lpe.spi",
     "AND4X1": "AND4_X1_lpe.spi",
     "AND4X2": "AND4_X2_lpe.spi",
     "BUFX2": "BUF_X2_lpe.spi",
@@ -120,6 +120,10 @@ ZERO_SPI_FEATS = {
     "wp_sum": 0.0,
     "wn_sum": 0.0,
     "wp_over_wn": 0.0,
+    "num_pmos": 0.0,
+    "num_nmos": 0.0,
+    "p_nfin_sum": 0.0,
+    "n_nfin_sum": 0.0,
 }
 
 
@@ -205,6 +209,10 @@ def parse_spi_features_from_text(text: str) -> Dict[str, float]:
         "wp_sum": wp_sum_log,
         "wn_sum": wn_sum_log,
         "wp_over_wn": wp_over_wn,
+        "num_pmos": float(feats.get("num_pmos", 0.0)),
+        "num_nmos": float(feats.get("num_nmos", 0.0)),
+        "p_nfin_sum": float(feats.get("p_nfin_sum", 0.0)),
+        "n_nfin_sum": float(feats.get("n_nfin_sum", 0.0)),
     }
 
 
@@ -325,11 +333,22 @@ def build_tgt_spi_feats_from_big_sp(tgt_sp_root_or_file: str) -> Tuple[
         if subckt is None:
             feats_map[cell_type] = dict(ZERO_SPI_FEATS)
             continue
-        sub_text = extract_subckt_text(sp_text, subckt)
-        if not sub_text.strip():
-            feats_map[cell_type] = dict(ZERO_SPI_FEATS)
+        devs, _, _ = flatten_subckt_hierarchy(sp_text, subckt)
+        if not devs:
+            sub_text = extract_subckt_text(sp_text, subckt)
+            if not sub_text.strip():
+                feats_map[cell_type] = dict(ZERO_SPI_FEATS)
+                continue
+            feats_map[cell_type] = parse_spi_features_from_text(sub_text)
+            subckt_map[cell_type] = subckt
             continue
-        feats_map[cell_type] = parse_spi_features_from_text(sub_text)
+        feats_map[cell_type] = parse_spi_features_from_text(
+            "\n".join(
+                f"M {d['d']} {d['g']} {d['s']} {d['b']} {d.get('model', d['type'])} "
+                f"W={d.get('W', 0.0)} L={d.get('L', 0.0)} nfin={d.get('nfin', 0.0)} m={d.get('m', 1.0)}"
+                for d in devs
+            )
+        )
         subckt_map[cell_type] = subckt
 
     return feats_map, subckt_map, sp_file
@@ -341,6 +360,9 @@ def _build_enhanced_row(
         cell_name: str,
         from_pin: str,
         to_pin: str,
+        when_cond: str,
+        sdf_cond: str,
+        timing_sense: str,
         pol: str,
         slew: float,
         cap: float,
@@ -379,13 +401,31 @@ def _build_enhanced_row(
     inv_temp = 1.0 / max(temp, 1e-12) if temp != 0 else 0.0
 
     log_eps = 1e-9
+    arc_cond = normalize_arc_condition(when_cond, sdf_cond)
+    group_id = "|".join([
+        str(tech),
+        str(cell_name),
+        str(from_pin),
+        str(to_pin),
+        str(timing_sense),
+        str(arc_cond),
+        str(pol),
+        f"v={float(voltage):.6g}",
+        f"t={float(temp):.6g}",
+    ])
 
     row = {
         "tech": tech,
         "cell_type": cell_type,
+        #"cell_group": cell_type_to_topology_group(cell_type),
         "cell_name": cell_name,
         "from_pin": from_pin,
         "to_pin": to_pin,
+        "when_cond": when_cond,
+        "sdf_cond": sdf_cond,
+        "timing_sense": timing_sense,
+        "arc_cond": arc_cond,
+        "group_id": group_id,
 
         "pol": pol,
         "voltage": float(voltage),
@@ -429,6 +469,9 @@ def to_rows(tech: str, arc_dict: dict, spi_feats: Dict[str, float], slew_thresho
     cell_name = arc_dict["cell_name"]
     from_pin = arc_dict["from_pin"]
     to_pin = arc_dict["to_pin"]
+    when_cond = arc_dict.get("when_cond", "")
+    sdf_cond = arc_dict.get("sdf_cond", "")
+    timing_sense = arc_dict.get("timing_sense", "unknown")
 
     for pol, M in [("rise", arc_dict["cell_rise"]), ("fall", arc_dict["cell_fall"])]:
         th = slew_thresholds.get(pol, {}) if slew_thresholds else {}
@@ -452,6 +495,9 @@ def to_rows(tech: str, arc_dict: dict, spi_feats: Dict[str, float], slew_thresho
                     cell_name=cell_name,
                     from_pin=from_pin,
                     to_pin=to_pin,
+                    when_cond=when_cond,
+                    sdf_cond=sdf_cond,
+                    timing_sense=timing_sense,
                     pol=pol,
                     slew=slew_norm,
                     cap=float(c),
@@ -542,6 +588,34 @@ def split_by_cell_type_stratified(
         val_idx.extend(idx[n_train:n_train + n_val].tolist())
         test_idx.extend(idx[n_train + n_val:].tolist())
     return train_idx, val_idx, test_idx
+
+
+def split_by_table_group(
+        df: pd.DataFrame, ratios=(0.7, 0.2, 0.1), seed=42, group_col: str = "group_id"
+) -> Tuple[List[str], List[str], List[str]]:
+    if group_col not in df.columns:
+        raise KeyError(f"Column '{group_col}' not found in dataframe.")
+
+    groups = df[group_col].dropna().unique()
+    rng = np.random.RandomState(seed)
+    rng.shuffle(groups)
+
+    n = len(groups)
+    if n < 3:
+        return groups.tolist(), [], []
+
+    n_train = int(np.floor(ratios[0] * n))
+    n_val = int(np.floor(ratios[1] * n))
+    n_test = n - n_train - n_val
+
+    if n_test < 1 and n > 2:
+        n_test = 1
+        n_train = n - n_val - n_test
+
+    train_groups = groups[:n_train]
+    val_groups = groups[n_train:n_train + n_val]
+    test_groups = groups[n_train + n_val:]
+    return train_groups.tolist(), val_groups.tolist(), test_groups.tolist()
 
 
 # ======================================================
@@ -733,6 +807,39 @@ def main():
             "ratios": list(ratios),
             "seed": args.split_seed,
         }
+    elif split_mode == "table_group":
+        train_groups, val_groups, test_groups = split_by_table_group(
+            df_tgt, ratios=ratios, seed=args.split_seed, group_col="group_id"
+        )
+        df_tgt_train_pool = df_tgt[df_tgt["group_id"].isin(train_groups)].copy()
+        df_tgt_val = df_tgt[df_tgt["group_id"].isin(val_groups)].copy()
+        df_tgt_test = df_tgt[df_tgt["group_id"].isin(test_groups)].copy()
+
+        train_cell_types = sorted(df_tgt_train_pool["cell_type"].unique().tolist())
+        val_cell_types = sorted(df_tgt_val["cell_type"].unique().tolist())
+        test_cell_types = sorted(df_tgt_test["cell_type"].unique().tolist())
+
+        print("\n" + "=" * 50)
+        print("Target split (Table-Level Group)")
+        print(f"  Train groups: {len(train_groups)}, rows: {len(df_tgt_train_pool)}, "
+              f"cell types: {len(train_cell_types)}")
+        print(f"  Val   groups: {len(val_groups)}, rows: {len(df_tgt_val)}, "
+              f"cell types: {len(val_cell_types)}")
+        print(f"  Test  groups: {len(test_groups)}, rows: {len(df_tgt_test)}, "
+              f"cell types: {len(test_cell_types)}")
+        print("=" * 50 + "\n")
+
+        split_info = {
+            "split_mode": "table_group",
+            "ratios": list(ratios),
+            "seed": args.split_seed,
+            "num_train_groups": len(train_groups),
+            "num_val_groups": len(val_groups),
+            "num_test_groups": len(test_groups),
+            "train_cell_types": train_cell_types,
+            "val_cell_types": val_cell_types,
+            "test_cell_types": test_cell_types,
+        }
     else:
         raise ValueError(f"Unknown tgt_split_mode: {split_mode}")
 
@@ -776,9 +883,10 @@ def main():
     feature_cols = [
         c for c in df_tgt_train.columns
         if c not in ["delay", "tech", "is_labeled",
-                     "cell_name", "from_pin", "to_pin", "group_id"]
+                     "cell_name", "from_pin", "to_pin", "when_cond", "sdf_cond",
+                     "timing_sense", "arc_cond", "group_id"]
     ]
-
+    
     meta = {
         "src_spi_by_cell": src_spi_map,
         "tgt_sp_file": tgt_sp_file,

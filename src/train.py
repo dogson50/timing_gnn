@@ -12,7 +12,7 @@ from torchmetrics import R2Score
 from torch.utils.data import Dataset, DataLoader
 
 from options import get_options
-from hgat import HGATDesignEncoder, build_dgl_graph_from_devs
+from hgat import HGATDesignEncoder, build_dgl_graph_from_devs, get_hgat_in_dim_map
 from spi2graph import parse_transistors_spice, parse_top_subckt_pins
 import tee
 
@@ -289,9 +289,10 @@ def train(options, seed):
     hgat_dropout = getattr(options, "hgat_dropout", 0.1)
     hgat_use_net_readout = getattr(options, "hgat_use_net_readout", False)
     hgat_type_attn_readout = getattr(options, "hgat_type_attn_readout", False)
+    hgat_l2_norm = getattr(options, "hgat_l2_norm", False)
     dropout = getattr(options, "mlp_dropout", 0.0)
 
-    in_map = {"NET": 4, "PMOS": 2, "NMOS": 2}
+    in_map = get_hgat_in_dim_map()
     enc = HGATDesignEncoder(
         in_dim_map=in_map,
         hid=hgat_hid,
@@ -301,6 +302,7 @@ def train(options, seed):
         dropout=hgat_dropout,
         use_net_readout=hgat_use_net_readout,
         type_attn_readout=hgat_type_attn_readout,
+        l2_norm=hgat_l2_norm,
     ).to(device)
     model = CellDelayRegressor(in_dim=options.in_dim, design_dim=design_dim, hid=hgat_hid, dropout=dropout).to(device)
 

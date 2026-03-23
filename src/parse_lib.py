@@ -176,6 +176,22 @@ def _find_all_timing_arcs(pin_block: str):
     return arcs
 
 
+def _extract_timing_attr(tblock: str, key: str, default: str = ""):
+    m = re.search(rf"{re.escape(key)}\s*:\s*\"([^\"]*)\"\s*;", tblock, re.I)
+    if not m:
+        m = re.search(rf"{re.escape(key)}\s*:\s*([A-Za-z0-9_!&|()'=<>+\-]+)\s*;", tblock, re.I)
+    if not m:
+        return default
+    return str(m.group(1)).strip()
+
+
+def normalize_arc_condition(when_cond: str = "", sdf_cond: str = ""):
+    raw = str(when_cond).strip() if str(when_cond).strip() else str(sdf_cond).strip()
+    if not raw:
+        return "<NONE>"
+    return re.sub(r"\s+", "", raw).upper()
+
+
 
 
 def canonical_cell_type(cell_name: str):
@@ -326,12 +342,25 @@ def canonical_cell_type(cell_name: str):
     if re.fullmatch(r"XNOR2_X2", n):
         return "XNOR2X2"
     # ---------- ASAP7 的XNOR----------
-    if re.fullmatch(r"XOR2X2_ASAP7_6T_L", n):
+    if re.fullmatch(r"XNOR2X2_ASAP7_6T_L", n):
         return "XNOR2X2"
 
     return None
 
 # ===================== 主解析接口 =====================
+
+def cell_type_to_topology_group(cell_type: str):
+    """Group drive-strength variants under the same logical topology."""
+    if cell_type is None:
+        return "UNKNOWN"
+
+    n = str(cell_type).upper().replace('"', '').replace(" ", "").replace("_", "")
+    n = re.sub(r"ASAP7\d*T[LHVTRP]*$", "", n)
+    m = re.fullmatch(r"([A-Z]+\d*)(?:X\d+[A-Z]*)", n)
+    if m:
+        return m.group(1) + "X"
+    return n
+
 
 def parse_cell_arcs(lib_text: str, target_cell_types=None):
     if target_cell_types is not None:
@@ -398,6 +427,9 @@ def parse_cell_arcs(lib_text: str, target_cell_types=None):
                         "cell_name": cell_name,
                         "from_pin": from_pin,
                         "to_pin": to_pin,
+                        "when_cond": _extract_timing_attr(tblock, "when", ""),
+                        "sdf_cond": _extract_timing_attr(tblock, "sdf_cond", ""),
+                        "timing_sense": _extract_timing_attr(tblock, "timing_sense", "unknown").lower(),
                         "slew": idx1_ps,
                         "cap": idx2_pf,
                         "cell_rise": cell_rise,
@@ -437,4 +469,7 @@ def parse_inv_arc_A_Y_auto(lib_text: str):
         "cell_name": a0["cell_name"],
         "from_pin": a0["from_pin"],
         "to_pin": a0["to_pin"],
+        "when_cond": a0.get("when_cond", ""),
+        "sdf_cond": a0.get("sdf_cond", ""),
+        "timing_sense": a0.get("timing_sense", "unknown"),
     }

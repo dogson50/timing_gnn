@@ -20,7 +20,7 @@ from torch.utils.data import Dataset as TorchDataset, DataLoader
 from options import get_options
 import tee
 
-from hgat import HGATDesignEncoder, build_dgl_graph_from_devs
+from hgat import HGATDesignEncoder, build_dgl_graph_from_devs, get_hgat_in_dim_map
 from spi2graph import parse_transistors_spice, parse_top_subckt_pins
 
 NUMERIC_COLS = [
@@ -404,8 +404,15 @@ def train_balanced_sep_mlp_factorized_calib(options, seed):
 
     print(f"[Info] align_weight={align_weight}, orth_weight={orth_weight}, warmup_epochs={warmup_epochs}")
 
-    in_map = {"NET": 4, "PMOS": 2, "NMOS": 2}
-    enc = HGATDesignEncoder(in_dim_map=in_map, hid=hgat_hid, out=design_dim, num_heads=hgat_heads).to(device)
+    hgat_l2_norm = getattr(options, "hgat_l2_norm", False)
+    in_map = get_hgat_in_dim_map()
+    enc = HGATDesignEncoder(
+        in_dim_map=in_map,
+        hid=hgat_hid,
+        out=design_dim,
+        num_heads=hgat_heads,
+        l2_norm=hgat_l2_norm,
+    ).to(device)
     model = FactorizedCalibRegressor(
         in_dim=options.in_dim,
         design_dim=design_dim,

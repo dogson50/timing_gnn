@@ -13,7 +13,7 @@ from torch.utils.data import Dataset as TorchDataset, DataLoader
 from options import get_options
 import tee
 
-from hgat import HGATDesignEncoder, build_dgl_graph_from_devs
+from hgat import HGATDesignEncoder, build_dgl_graph_from_devs, get_hgat_in_dim_map
 from spi2graph import parse_transistors_spice, parse_top_subckt_pins
 
 NUMERIC_COLS = [
@@ -453,9 +453,10 @@ def train_balanced_sep_mlp(options, seed):
     hgat_dropout = getattr(options, "hgat_dropout", 0.1)
     hgat_use_net_readout = getattr(options, "hgat_use_net_readout", False)
     hgat_type_attn_readout = getattr(options, "hgat_type_attn_readout", False)
+    hgat_l2_norm = getattr(options, "hgat_l2_norm", False)
     dropout = getattr(options, "mlp_dropout", 0.0)
 
-    in_map = {"NET": 4, "PMOS": 2, "NMOS": 2}
+    in_map = get_hgat_in_dim_map()
     enc = HGATDesignEncoder(
         in_dim_map=in_map,
         hid=hgat_hid,
@@ -465,6 +466,7 @@ def train_balanced_sep_mlp(options, seed):
         dropout=hgat_dropout,
         use_net_readout=hgat_use_net_readout,
         type_attn_readout=hgat_type_attn_readout,
+        l2_norm=hgat_l2_norm,
     ).to(device)
     model = SepCellDelayRegressor(
         in_dim=options.in_dim,
