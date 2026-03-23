@@ -1,0 +1,1269 @@
+----------------Loading HGAT graphs----------------
+[Info] freeze_hgat=True, precomputing z
+[Info] Cached source graphs: 32
+[Info] Cached target graphs: 32
+[Info] src cache coverage: 32/32
+[Info] tgt cache coverage: 30/30
+----------------Start training---------------
+/mnt/d/python_timing_gnn/timing_1_31/Timing-Pred-Code/src/train_balanced_sampling_sep_mlp_shared_calib_step5a_feat_opt.py:790: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = th.cuda.amp.GradScaler(enabled=amp_on)
+/mnt/d/python_timing_gnn/timing_1_31/Timing-Pred-Code/src/train_balanced_sampling_sep_mlp_shared_calib_step5a_feat_opt.py:818: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with th.cuda.amp.autocast(enabled=amp_on):
+/mnt/d/python_timing_gnn/timing_1_31/Timing-Pred-Code/src/train_balanced_sampling_sep_mlp_shared_calib_step5a_feat_opt.py:842: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with th.cuda.amp.autocast(enabled=amp_on):
+/mnt/d/python_timing_gnn/timing_1_31/Timing-Pred-Code/src/train_balanced_sampling_sep_mlp_shared_calib_step5a_feat_opt.py:860: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with th.cuda.amp.autocast(enabled=amp_on):
+e0, train_loss:0.7737, r2:-0.051, val_loss:1.0568, val_r2:-0.003, src_w:1.0000
+Model successfully saved
+e1, train_loss:0.7327, r2:0.004, val_loss:1.0071, val_r2:0.044, src_w:1.0000
+Model successfully saved
+e2, train_loss:0.6817, r2:0.053, val_loss:0.9596, val_r2:0.089, src_w:1.0000
+Model successfully saved
+e3, train_loss:0.6472, r2:0.100, val_loss:0.9118, val_r2:0.134, src_w:1.0000
+Model successfully saved
+e4, train_loss:0.5823, r2:0.149, val_loss:0.8612, val_r2:0.182, src_w:1.0000
+Model successfully saved
+e5, train_loss:0.5505, r2:0.199, val_loss:0.8064, val_r2:0.234, src_w:1.0000
+Model successfully saved
+e6, train_loss:0.5415, r2:0.252, val_loss:0.7478, val_r2:0.290, src_w:1.0000
+Model successfully saved
+e7, train_loss:0.4787, r2:0.310, val_loss:0.6868, val_r2:0.348, src_w:1.0000
+Model successfully saved
+e8, train_loss:0.4525, r2:0.369, val_loss:0.6237, val_r2:0.408, src_w:1.0000
+Model successfully saved
+e9, train_loss:0.4297, r2:0.429, val_loss:0.5602, val_r2:0.468, src_w:1.0000
+Model successfully saved
+e10, train_loss:0.3998, r2:0.490, val_loss:0.4995, val_r2:0.526, src_w:1.0000
+Model successfully saved
+e11, train_loss:0.3647, r2:0.546, val_loss:0.4438, val_r2:0.579, src_w:1.0000
+Model successfully saved
+e12, train_loss:0.3362, r2:0.600, val_loss:0.3924, val_r2:0.627, src_w:1.0000
+Model successfully saved
+e13, train_loss:0.3169, r2:0.645, val_loss:0.3469, val_r2:0.671, src_w:1.0000
+Model successfully saved
+e14, train_loss:0.2886, r2:0.687, val_loss:0.3100, val_r2:0.706, src_w:1.0000
+Model successfully saved
+e15, train_loss:0.2695, r2:0.720, val_loss:0.2821, val_r2:0.732, src_w:1.0000
+Model successfully saved
+e16, train_loss:0.2442, r2:0.741, val_loss:0.2626, val_r2:0.751, src_w:1.0000
+Model successfully saved
+e17, train_loss:0.2321, r2:0.758, val_loss:0.2485, val_r2:0.764, src_w:1.0000
+Model successfully saved
+e18, train_loss:0.2348, r2:0.768, val_loss:0.2382, val_r2:0.774, src_w:1.0000
+Model successfully saved
+e19, train_loss:0.2235, r2:0.777, val_loss:0.2276, val_r2:0.784, src_w:1.0000
+Model successfully saved
+e20, train_loss:0.2160, r2:0.787, val_loss:0.2146, val_r2:0.796, src_w:1.0000
+Model successfully saved
+e21, train_loss:0.2125, r2:0.801, val_loss:0.2020, val_r2:0.808, src_w:1.0000
+Model successfully saved
+e22, train_loss:0.2056, r2:0.815, val_loss:0.1914, val_r2:0.818, src_w:1.0000
+Model successfully saved
+e23, train_loss:0.2045, r2:0.826, val_loss:0.1831, val_r2:0.826, src_w:1.0000
+Model successfully saved
+e24, train_loss:0.1968, r2:0.836, val_loss:0.1772, val_r2:0.832, src_w:1.0000
+Model successfully saved
+e25, train_loss:0.2026, r2:0.841, val_loss:0.1736, val_r2:0.835, src_w:1.0000
+Model successfully saved
+e26, train_loss:0.1865, r2:0.845, val_loss:0.1706, val_r2:0.838, src_w:1.0000
+Model successfully saved
+e27, train_loss:0.1825, r2:0.848, val_loss:0.1684, val_r2:0.840, src_w:1.0000
+Model successfully saved
+e28, train_loss:0.1891, r2:0.850, val_loss:0.1671, val_r2:0.841, src_w:1.0000
+Model successfully saved
+e29, train_loss:0.1951, r2:0.852, val_loss:0.1646, val_r2:0.844, src_w:1.0000
+Model successfully saved
+e30, train_loss:0.1901, r2:0.854, val_loss:0.1623, val_r2:0.846, src_w:1.0000
+Model successfully saved
+e31, train_loss:0.1814, r2:0.857, val_loss:0.1603, val_r2:0.848, src_w:1.0000
+Model successfully saved
+e32, train_loss:0.1808, r2:0.858, val_loss:0.1582, val_r2:0.850, src_w:1.0000
+Model successfully saved
+e33, train_loss:0.1923, r2:0.860, val_loss:0.1563, val_r2:0.852, src_w:1.0000
+Model successfully saved
+e34, train_loss:0.1751, r2:0.861, val_loss:0.1549, val_r2:0.853, src_w:1.0000
+Model successfully saved
+e35, train_loss:0.1846, r2:0.863, val_loss:0.1532, val_r2:0.855, src_w:1.0000
+Model successfully saved
+e36, train_loss:0.1809, r2:0.864, val_loss:0.1519, val_r2:0.856, src_w:1.0000
+Model successfully saved
+e37, train_loss:0.1792, r2:0.864, val_loss:0.1508, val_r2:0.857, src_w:1.0000
+Model successfully saved
+e38, train_loss:0.1776, r2:0.866, val_loss:0.1502, val_r2:0.857, src_w:1.0000
+Model successfully saved
+e39, train_loss:0.1856, r2:0.866, val_loss:0.1493, val_r2:0.858, src_w:1.0000
+Model successfully saved
+e40, train_loss:0.1755, r2:0.867, val_loss:0.1487, val_r2:0.859, src_w:1.0000
+Model successfully saved
+e41, train_loss:0.1733, r2:0.868, val_loss:0.1480, val_r2:0.860, src_w:1.0000
+Model successfully saved
+e42, train_loss:0.1879, r2:0.869, val_loss:0.1473, val_r2:0.860, src_w:1.0000
+Model successfully saved
+e43, train_loss:0.1815, r2:0.870, val_loss:0.1471, val_r2:0.860, src_w:1.0000
+Model successfully saved
+e44, train_loss:0.1776, r2:0.869, val_loss:0.1464, val_r2:0.861, src_w:1.0000
+Model successfully saved
+e45, train_loss:0.1712, r2:0.871, val_loss:0.1462, val_r2:0.861, src_w:1.0000
+Model successfully saved
+e46, train_loss:0.1712, r2:0.872, val_loss:0.1454, val_r2:0.862, src_w:1.0000
+Model successfully saved
+e47, train_loss:0.1785, r2:0.872, val_loss:0.1443, val_r2:0.863, src_w:1.0000
+Model successfully saved
+e48, train_loss:0.1700, r2:0.872, val_loss:0.1436, val_r2:0.864, src_w:1.0000
+Model successfully saved
+e49, train_loss:0.1733, r2:0.873, val_loss:0.1423, val_r2:0.865, src_w:1.0000
+Model successfully saved
+e50, train_loss:0.1670, r2:0.875, val_loss:0.1418, val_r2:0.865, src_w:1.0000
+Model successfully saved
+e51, train_loss:0.1741, r2:0.875, val_loss:0.1401, val_r2:0.867, src_w:1.0000
+Model successfully saved
+e52, train_loss:0.1641, r2:0.876, val_loss:0.1400, val_r2:0.867, src_w:1.0000
+Model successfully saved
+e53, train_loss:0.1632, r2:0.876, val_loss:0.1389, val_r2:0.868, src_w:1.0000
+Model successfully saved
+e54, train_loss:0.1723, r2:0.878, val_loss:0.1382, val_r2:0.869, src_w:1.0000
+Model successfully saved
+e55, train_loss:0.1659, r2:0.879, val_loss:0.1377, val_r2:0.869, src_w:1.0000
+Model successfully saved
+e56, train_loss:0.1653, r2:0.879, val_loss:0.1373, val_r2:0.870, src_w:1.0000
+Model successfully saved
+e57, train_loss:0.1669, r2:0.880, val_loss:0.1368, val_r2:0.870, src_w:1.0000
+Model successfully saved
+e58, train_loss:0.1628, r2:0.880, val_loss:0.1357, val_r2:0.871, src_w:1.0000
+Model successfully saved
+e59, train_loss:0.1606, r2:0.882, val_loss:0.1345, val_r2:0.872, src_w:1.0000
+Model successfully saved
+e60, train_loss:0.1729, r2:0.882, val_loss:0.1345, val_r2:0.872, src_w:1.0000
+Model successfully saved
+e61, train_loss:0.1616, r2:0.881, val_loss:0.1338, val_r2:0.873, src_w:1.0000
+Model successfully saved
+e62, train_loss:0.1561, r2:0.882, val_loss:0.1335, val_r2:0.873, src_w:1.0000
+Model successfully saved
+e63, train_loss:0.1563, r2:0.884, val_loss:0.1335, val_r2:0.873, src_w:1.0000
+Model successfully saved
+e64, train_loss:0.1554, r2:0.884, val_loss:0.1322, val_r2:0.875, src_w:1.0000
+Model successfully saved
+e65, train_loss:0.1642, r2:0.885, val_loss:0.1309, val_r2:0.876, src_w:1.0000
+Model successfully saved
+e66, train_loss:0.1648, r2:0.885, val_loss:0.1299, val_r2:0.877, src_w:1.0000
+Model successfully saved
+e67, train_loss:0.1647, r2:0.886, val_loss:0.1290, val_r2:0.878, src_w:1.0000
+Model successfully saved
+e68, train_loss:0.1633, r2:0.887, val_loss:0.1281, val_r2:0.878, src_w:1.0000
+Model successfully saved
+e69, train_loss:0.1599, r2:0.888, val_loss:0.1275, val_r2:0.879, src_w:1.0000
+Model successfully saved
+e70, train_loss:0.1533, r2:0.888, val_loss:0.1270, val_r2:0.879, src_w:1.0000
+Model successfully saved
+e71, train_loss:0.1571, r2:0.889, val_loss:0.1273, val_r2:0.879, src_w:1.0000
+e72, train_loss:0.1584, r2:0.890, val_loss:0.1262, val_r2:0.880, src_w:1.0000
+Model successfully saved
+e73, train_loss:0.1578, r2:0.890, val_loss:0.1256, val_r2:0.881, src_w:1.0000
+Model successfully saved
+e74, train_loss:0.1538, r2:0.891, val_loss:0.1255, val_r2:0.881, src_w:1.0000
+Model successfully saved
+e75, train_loss:0.1509, r2:0.892, val_loss:0.1248, val_r2:0.882, src_w:1.0000
+Model successfully saved
+e76, train_loss:0.1628, r2:0.892, val_loss:0.1242, val_r2:0.882, src_w:1.0000
+Model successfully saved
+e77, train_loss:0.1634, r2:0.892, val_loss:0.1234, val_r2:0.883, src_w:1.0000
+Model successfully saved
+e78, train_loss:0.1506, r2:0.894, val_loss:0.1243, val_r2:0.882, src_w:1.0000
+e79, train_loss:0.1562, r2:0.893, val_loss:0.1223, val_r2:0.884, src_w:1.0000
+Model successfully saved
+e80, train_loss:0.1492, r2:0.894, val_loss:0.1216, val_r2:0.885, src_w:1.0000
+Model successfully saved
+e81, train_loss:0.1518, r2:0.895, val_loss:0.1210, val_r2:0.885, src_w:1.0000
+Model successfully saved
+e82, train_loss:0.1562, r2:0.896, val_loss:0.1208, val_r2:0.885, src_w:1.0000
+Model successfully saved
+e83, train_loss:0.1565, r2:0.896, val_loss:0.1204, val_r2:0.886, src_w:1.0000
+Model successfully saved
+e84, train_loss:0.1518, r2:0.896, val_loss:0.1200, val_r2:0.886, src_w:1.0000
+Model successfully saved
+e85, train_loss:0.1556, r2:0.897, val_loss:0.1193, val_r2:0.887, src_w:1.0000
+Model successfully saved
+e86, train_loss:0.1533, r2:0.897, val_loss:0.1185, val_r2:0.887, src_w:1.0000
+Model successfully saved
+e87, train_loss:0.1606, r2:0.898, val_loss:0.1185, val_r2:0.888, src_w:1.0000
+Model successfully saved
+e88, train_loss:0.1501, r2:0.898, val_loss:0.1180, val_r2:0.888, src_w:1.0000
+Model successfully saved
+e89, train_loss:0.1471, r2:0.899, val_loss:0.1182, val_r2:0.888, src_w:1.0000
+e90, train_loss:0.1578, r2:0.899, val_loss:0.1172, val_r2:0.889, src_w:1.0000
+Model successfully saved
+e91, train_loss:0.1494, r2:0.900, val_loss:0.1165, val_r2:0.889, src_w:1.0000
+Model successfully saved
+e92, train_loss:0.1565, r2:0.900, val_loss:0.1161, val_r2:0.890, src_w:1.0000
+Model successfully saved
+e93, train_loss:0.1474, r2:0.901, val_loss:0.1159, val_r2:0.890, src_w:1.0000
+Model successfully saved
+e94, train_loss:0.1439, r2:0.901, val_loss:0.1153, val_r2:0.891, src_w:1.0000
+Model successfully saved
+e95, train_loss:0.1563, r2:0.902, val_loss:0.1144, val_r2:0.891, src_w:1.0000
+Model successfully saved
+e96, train_loss:0.1526, r2:0.902, val_loss:0.1144, val_r2:0.891, src_w:1.0000
+Model successfully saved
+e97, train_loss:0.1533, r2:0.902, val_loss:0.1141, val_r2:0.892, src_w:1.0000
+Model successfully saved
+e98, train_loss:0.1556, r2:0.903, val_loss:0.1137, val_r2:0.892, src_w:1.0000
+Model successfully saved
+e99, train_loss:0.1456, r2:0.903, val_loss:0.1136, val_r2:0.892, src_w:1.0000
+Model successfully saved
+e100, train_loss:0.1563, r2:0.904, val_loss:0.1138, val_r2:0.892, src_w:1.0000
+e101, train_loss:0.1509, r2:0.904, val_loss:0.1132, val_r2:0.893, src_w:1.0000
+Model successfully saved
+e102, train_loss:0.1409, r2:0.905, val_loss:0.1127, val_r2:0.893, src_w:1.0000
+Model successfully saved
+e103, train_loss:0.1443, r2:0.905, val_loss:0.1122, val_r2:0.894, src_w:1.0000
+Model successfully saved
+e104, train_loss:0.1553, r2:0.905, val_loss:0.1113, val_r2:0.894, src_w:1.0000
+Model successfully saved
+e105, train_loss:0.1388, r2:0.906, val_loss:0.1109, val_r2:0.895, src_w:1.0000
+Model successfully saved
+e106, train_loss:0.1498, r2:0.906, val_loss:0.1104, val_r2:0.895, src_w:1.0000
+Model successfully saved
+e107, train_loss:0.1519, r2:0.907, val_loss:0.1101, val_r2:0.895, src_w:1.0000
+Model successfully saved
+e108, train_loss:0.1520, r2:0.907, val_loss:0.1100, val_r2:0.896, src_w:1.0000
+Model successfully saved
+e109, train_loss:0.1417, r2:0.908, val_loss:0.1102, val_r2:0.895, src_w:1.0000
+e110, train_loss:0.1399, r2:0.907, val_loss:0.1099, val_r2:0.896, src_w:1.0000
+Model successfully saved
+e111, train_loss:0.1455, r2:0.908, val_loss:0.1082, val_r2:0.897, src_w:1.0000
+Model successfully saved
+e112, train_loss:0.1511, r2:0.908, val_loss:0.1083, val_r2:0.897, src_w:1.0000
+e113, train_loss:0.1452, r2:0.907, val_loss:0.1078, val_r2:0.898, src_w:1.0000
+Model successfully saved
+e114, train_loss:0.1530, r2:0.909, val_loss:0.1085, val_r2:0.897, src_w:1.0000
+e115, train_loss:0.1391, r2:0.909, val_loss:0.1068, val_r2:0.899, src_w:1.0000
+Model successfully saved
+e116, train_loss:0.1498, r2:0.910, val_loss:0.1073, val_r2:0.898, src_w:1.0000
+e117, train_loss:0.1461, r2:0.909, val_loss:0.1071, val_r2:0.898, src_w:1.0000
+e118, train_loss:0.1528, r2:0.911, val_loss:0.1072, val_r2:0.898, src_w:1.0000
+e119, train_loss:0.1442, r2:0.911, val_loss:0.1065, val_r2:0.899, src_w:1.0000
+Model successfully saved
+e120, train_loss:0.1448, r2:0.911, val_loss:0.1058, val_r2:0.900, src_w:1.0000
+Model successfully saved
+e121, train_loss:0.1463, r2:0.912, val_loss:0.1048, val_r2:0.901, src_w:1.0000
+Model successfully saved
+e122, train_loss:0.1389, r2:0.912, val_loss:0.1042, val_r2:0.901, src_w:1.0000
+Model successfully saved
+e123, train_loss:0.1481, r2:0.912, val_loss:0.1039, val_r2:0.901, src_w:1.0000
+Model successfully saved
+e124, train_loss:0.1393, r2:0.913, val_loss:0.1041, val_r2:0.901, src_w:1.0000
+e125, train_loss:0.1417, r2:0.913, val_loss:0.1036, val_r2:0.902, src_w:1.0000
+Model successfully saved
+e126, train_loss:0.1414, r2:0.913, val_loss:0.1033, val_r2:0.902, src_w:1.0000
+Model successfully saved
+e127, train_loss:0.1342, r2:0.914, val_loss:0.1037, val_r2:0.902, src_w:1.0000
+e128, train_loss:0.1471, r2:0.914, val_loss:0.1026, val_r2:0.903, src_w:1.0000
+Model successfully saved
+e129, train_loss:0.1494, r2:0.914, val_loss:0.1023, val_r2:0.903, src_w:1.0000
+Model successfully saved
+e130, train_loss:0.1362, r2:0.915, val_loss:0.1028, val_r2:0.902, src_w:1.0000
+e131, train_loss:0.1459, r2:0.915, val_loss:0.1020, val_r2:0.903, src_w:1.0000
+Model successfully saved
+e132, train_loss:0.1417, r2:0.915, val_loss:0.1017, val_r2:0.903, src_w:1.0000
+Model successfully saved
+e133, train_loss:0.1384, r2:0.915, val_loss:0.1016, val_r2:0.904, src_w:1.0000
+Model successfully saved
+e134, train_loss:0.1460, r2:0.916, val_loss:0.1022, val_r2:0.903, src_w:1.0000
+e135, train_loss:0.1386, r2:0.916, val_loss:0.1012, val_r2:0.904, src_w:1.0000
+Model successfully saved
+e136, train_loss:0.1465, r2:0.916, val_loss:0.1009, val_r2:0.904, src_w:1.0000
+Model successfully saved
+e137, train_loss:0.1486, r2:0.917, val_loss:0.1017, val_r2:0.903, src_w:1.0000
+e138, train_loss:0.1506, r2:0.917, val_loss:0.1003, val_r2:0.905, src_w:1.0000
+Model successfully saved
+e139, train_loss:0.1409, r2:0.917, val_loss:0.0991, val_r2:0.906, src_w:1.0000
+Model successfully saved
+e140, train_loss:0.1393, r2:0.917, val_loss:0.0991, val_r2:0.906, src_w:1.0000
+Model successfully saved
+e141, train_loss:0.1430, r2:0.918, val_loss:0.0986, val_r2:0.906, src_w:1.0000
+Model successfully saved
+e142, train_loss:0.1333, r2:0.918, val_loss:0.0987, val_r2:0.906, src_w:1.0000
+e143, train_loss:0.1360, r2:0.919, val_loss:0.1004, val_r2:0.905, src_w:1.0000
+e144, train_loss:0.1344, r2:0.918, val_loss:0.0998, val_r2:0.905, src_w:1.0000
+e145, train_loss:0.1474, r2:0.919, val_loss:0.0987, val_r2:0.906, src_w:1.0000
+e146, train_loss:0.1425, r2:0.919, val_loss:0.0981, val_r2:0.907, src_w:1.0000
+Model successfully saved
+e147, train_loss:0.1415, r2:0.919, val_loss:0.0988, val_r2:0.906, src_w:1.0000
+e148, train_loss:0.1494, r2:0.919, val_loss:0.0968, val_r2:0.908, src_w:1.0000
+Model successfully saved
+e149, train_loss:0.1424, r2:0.919, val_loss:0.0964, val_r2:0.909, src_w:1.0000
+Model successfully saved
+e150, train_loss:0.1342, r2:0.920, val_loss:0.0977, val_r2:0.907, src_w:1.0000
+e151, train_loss:0.1521, r2:0.920, val_loss:0.0962, val_r2:0.909, src_w:1.0000
+Model successfully saved
+e152, train_loss:0.1375, r2:0.920, val_loss:0.0964, val_r2:0.908, src_w:1.0000
+e153, train_loss:0.1423, r2:0.920, val_loss:0.0975, val_r2:0.907, src_w:1.0000
+e154, train_loss:0.1294, r2:0.921, val_loss:0.0968, val_r2:0.908, src_w:1.0000
+e155, train_loss:0.1446, r2:0.922, val_loss:0.0960, val_r2:0.909, src_w:1.0000
+Model successfully saved
+e156, train_loss:0.1428, r2:0.921, val_loss:0.0953, val_r2:0.910, src_w:1.0000
+Model successfully saved
+e157, train_loss:0.1453, r2:0.922, val_loss:0.0944, val_r2:0.910, src_w:1.0000
+Model successfully saved
+e158, train_loss:0.1342, r2:0.923, val_loss:0.0941, val_r2:0.911, src_w:1.0000
+Model successfully saved
+e159, train_loss:0.1382, r2:0.923, val_loss:0.0941, val_r2:0.911, src_w:1.0000
+e160, train_loss:0.1397, r2:0.923, val_loss:0.0941, val_r2:0.911, src_w:1.0000
+e161, train_loss:0.1366, r2:0.923, val_loss:0.0943, val_r2:0.911, src_w:1.0000
+e162, train_loss:0.1283, r2:0.924, val_loss:0.0943, val_r2:0.911, src_w:1.0000
+e163, train_loss:0.1327, r2:0.924, val_loss:0.0941, val_r2:0.911, src_w:1.0000
+e164, train_loss:0.1411, r2:0.924, val_loss:0.0938, val_r2:0.911, src_w:1.0000
+Model successfully saved
+e165, train_loss:0.1428, r2:0.924, val_loss:0.0929, val_r2:0.912, src_w:1.0000
+Model successfully saved
+e166, train_loss:0.1308, r2:0.925, val_loss:0.0925, val_r2:0.912, src_w:1.0000
+Model successfully saved
+e167, train_loss:0.1357, r2:0.925, val_loss:0.0920, val_r2:0.913, src_w:1.0000
+Model successfully saved
+e168, train_loss:0.1413, r2:0.925, val_loss:0.0917, val_r2:0.913, src_w:1.0000
+Model successfully saved
+e169, train_loss:0.1279, r2:0.925, val_loss:0.0916, val_r2:0.913, src_w:1.0000
+Model successfully saved
+e170, train_loss:0.1409, r2:0.925, val_loss:0.0927, val_r2:0.912, src_w:1.0000
+e171, train_loss:0.1368, r2:0.925, val_loss:0.0926, val_r2:0.912, src_w:1.0000
+e172, train_loss:0.1369, r2:0.926, val_loss:0.0922, val_r2:0.912, src_w:1.0000
+e173, train_loss:0.1469, r2:0.926, val_loss:0.0917, val_r2:0.913, src_w:1.0000
+e174, train_loss:0.1378, r2:0.926, val_loss:0.0916, val_r2:0.913, src_w:1.0000
+Model successfully saved
+e175, train_loss:0.1306, r2:0.927, val_loss:0.0903, val_r2:0.914, src_w:1.0000
+Model successfully saved
+e176, train_loss:0.1274, r2:0.927, val_loss:0.0903, val_r2:0.914, src_w:1.0000
+Model successfully saved
+e177, train_loss:0.1350, r2:0.926, val_loss:0.0901, val_r2:0.914, src_w:1.0000
+Model successfully saved
+e178, train_loss:0.1383, r2:0.926, val_loss:0.0921, val_r2:0.913, src_w:1.0000
+e179, train_loss:0.1419, r2:0.927, val_loss:0.0917, val_r2:0.913, src_w:1.0000
+e180, train_loss:0.1370, r2:0.926, val_loss:0.0904, val_r2:0.914, src_w:1.0000
+e181, train_loss:0.1274, r2:0.928, val_loss:0.0900, val_r2:0.915, src_w:1.0000
+Model successfully saved
+e182, train_loss:0.1369, r2:0.927, val_loss:0.0905, val_r2:0.914, src_w:1.0000
+e183, train_loss:0.1380, r2:0.927, val_loss:0.0896, val_r2:0.915, src_w:1.0000
+Model successfully saved
+e184, train_loss:0.1351, r2:0.927, val_loss:0.0904, val_r2:0.914, src_w:1.0000
+e185, train_loss:0.1345, r2:0.928, val_loss:0.0906, val_r2:0.914, src_w:1.0000
+e186, train_loss:0.1371, r2:0.928, val_loss:0.0895, val_r2:0.915, src_w:1.0000
+Model successfully saved
+e187, train_loss:0.1392, r2:0.929, val_loss:0.0892, val_r2:0.915, src_w:1.0000
+Model successfully saved
+e188, train_loss:0.1348, r2:0.929, val_loss:0.0885, val_r2:0.916, src_w:1.0000
+Model successfully saved
+e189, train_loss:0.1337, r2:0.930, val_loss:0.0882, val_r2:0.916, src_w:1.0000
+Model successfully saved
+e190, train_loss:0.1294, r2:0.929, val_loss:0.0887, val_r2:0.916, src_w:1.0000
+e191, train_loss:0.1306, r2:0.930, val_loss:0.0891, val_r2:0.915, src_w:1.0000
+e192, train_loss:0.1239, r2:0.929, val_loss:0.0884, val_r2:0.916, src_w:1.0000
+e193, train_loss:0.1410, r2:0.929, val_loss:0.0874, val_r2:0.917, src_w:1.0000
+Model successfully saved
+e194, train_loss:0.1398, r2:0.930, val_loss:0.0876, val_r2:0.917, src_w:1.0000
+e195, train_loss:0.1221, r2:0.930, val_loss:0.0873, val_r2:0.917, src_w:1.0000
+Model successfully saved
+e196, train_loss:0.1335, r2:0.930, val_loss:0.0873, val_r2:0.917, src_w:1.0000
+e197, train_loss:0.1287, r2:0.931, val_loss:0.0881, val_r2:0.916, src_w:1.0000
+e198, train_loss:0.1347, r2:0.931, val_loss:0.0884, val_r2:0.916, src_w:1.0000
+e199, train_loss:0.1369, r2:0.931, val_loss:0.0877, val_r2:0.917, src_w:1.0000
+e200, train_loss:0.1297, r2:0.930, val_loss:0.0872, val_r2:0.917, src_w:1.0000
+Model successfully saved
+e201, train_loss:0.1336, r2:0.929, val_loss:0.0897, val_r2:0.915, src_w:1.0000
+e202, train_loss:0.1290, r2:0.929, val_loss:0.0859, val_r2:0.918, src_w:1.0000
+Model successfully saved
+e203, train_loss:0.1363, r2:0.932, val_loss:0.0875, val_r2:0.917, src_w:1.0000
+e204, train_loss:0.1333, r2:0.931, val_loss:0.0857, val_r2:0.919, src_w:1.0000
+Model successfully saved
+e205, train_loss:0.1383, r2:0.932, val_loss:0.0879, val_r2:0.917, src_w:1.0000
+e206, train_loss:0.1331, r2:0.931, val_loss:0.0856, val_r2:0.919, src_w:1.0000
+Model successfully saved
+e207, train_loss:0.1342, r2:0.931, val_loss:0.0864, val_r2:0.918, src_w:1.0000
+e208, train_loss:0.1310, r2:0.931, val_loss:0.0917, val_r2:0.913, src_w:1.0000
+e209, train_loss:0.1372, r2:0.928, val_loss:0.0858, val_r2:0.919, src_w:1.0000
+e210, train_loss:0.1306, r2:0.933, val_loss:0.0913, val_r2:0.913, src_w:1.0000
+e211, train_loss:0.1316, r2:0.928, val_loss:0.0844, val_r2:0.920, src_w:1.0000
+Model successfully saved
+e212, train_loss:0.1302, r2:0.933, val_loss:0.0869, val_r2:0.918, src_w:1.0000
+e213, train_loss:0.1342, r2:0.932, val_loss:0.0843, val_r2:0.920, src_w:1.0000
+Model successfully saved
+e214, train_loss:0.1339, r2:0.933, val_loss:0.0847, val_r2:0.920, src_w:1.0000
+e215, train_loss:0.1200, r2:0.933, val_loss:0.0859, val_r2:0.918, src_w:1.0000
+e216, train_loss:0.1360, r2:0.933, val_loss:0.0848, val_r2:0.919, src_w:1.0000
+e217, train_loss:0.1335, r2:0.934, val_loss:0.0842, val_r2:0.920, src_w:1.0000
+Model successfully saved
+e218, train_loss:0.1323, r2:0.934, val_loss:0.0836, val_r2:0.921, src_w:1.0000
+Model successfully saved
+e219, train_loss:0.1297, r2:0.935, val_loss:0.0831, val_r2:0.921, src_w:1.0000
+Model successfully saved
+e220, train_loss:0.1363, r2:0.935, val_loss:0.0827, val_r2:0.922, src_w:1.0000
+Model successfully saved
+e221, train_loss:0.1337, r2:0.935, val_loss:0.0826, val_r2:0.922, src_w:1.0000
+Model successfully saved
+e222, train_loss:0.1300, r2:0.935, val_loss:0.0825, val_r2:0.922, src_w:1.0000
+Model successfully saved
+e223, train_loss:0.1329, r2:0.935, val_loss:0.0826, val_r2:0.922, src_w:1.0000
+e224, train_loss:0.1318, r2:0.936, val_loss:0.0829, val_r2:0.921, src_w:1.0000
+e225, train_loss:0.1223, r2:0.936, val_loss:0.0832, val_r2:0.921, src_w:1.0000
+e226, train_loss:0.1375, r2:0.936, val_loss:0.0829, val_r2:0.921, src_w:1.0000
+e227, train_loss:0.1297, r2:0.936, val_loss:0.0826, val_r2:0.922, src_w:1.0000
+e228, train_loss:0.1452, r2:0.936, val_loss:0.0845, val_r2:0.920, src_w:1.0000
+e229, train_loss:0.1378, r2:0.935, val_loss:0.0837, val_r2:0.921, src_w:1.0000
+e230, train_loss:0.1305, r2:0.936, val_loss:0.0847, val_r2:0.920, src_w:1.0000
+e231, train_loss:0.1342, r2:0.935, val_loss:0.0820, val_r2:0.922, src_w:1.0000
+Model successfully saved
+e232, train_loss:0.1282, r2:0.937, val_loss:0.0834, val_r2:0.921, src_w:1.0000
+e233, train_loss:0.1292, r2:0.935, val_loss:0.0817, val_r2:0.922, src_w:1.0000
+Model successfully saved
+e234, train_loss:0.1268, r2:0.936, val_loss:0.0823, val_r2:0.922, src_w:1.0000
+e235, train_loss:0.1318, r2:0.936, val_loss:0.0830, val_r2:0.921, src_w:1.0000
+e236, train_loss:0.1245, r2:0.936, val_loss:0.0832, val_r2:0.921, src_w:1.0000
+e237, train_loss:0.1337, r2:0.937, val_loss:0.0826, val_r2:0.922, src_w:1.0000
+e238, train_loss:0.1300, r2:0.936, val_loss:0.0807, val_r2:0.923, src_w:1.0000
+Model successfully saved
+e239, train_loss:0.1303, r2:0.938, val_loss:0.0819, val_r2:0.922, src_w:1.0000
+e240, train_loss:0.1332, r2:0.937, val_loss:0.0810, val_r2:0.923, src_w:1.0000
+e241, train_loss:0.1207, r2:0.938, val_loss:0.0815, val_r2:0.923, src_w:1.0000
+e242, train_loss:0.1213, r2:0.938, val_loss:0.0816, val_r2:0.923, src_w:1.0000
+e243, train_loss:0.1261, r2:0.938, val_loss:0.0822, val_r2:0.922, src_w:1.0000
+e244, train_loss:0.1346, r2:0.938, val_loss:0.0817, val_r2:0.922, src_w:1.0000
+e245, train_loss:0.1363, r2:0.938, val_loss:0.0816, val_r2:0.923, src_w:1.0000
+e246, train_loss:0.1276, r2:0.937, val_loss:0.0804, val_r2:0.924, src_w:1.0000
+Model successfully saved
+e247, train_loss:0.1291, r2:0.938, val_loss:0.0813, val_r2:0.923, src_w:1.0000
+e248, train_loss:0.1292, r2:0.937, val_loss:0.0804, val_r2:0.924, src_w:1.0000
+Model successfully saved
+e249, train_loss:0.1339, r2:0.939, val_loss:0.0819, val_r2:0.922, src_w:1.0000
+e250, train_loss:0.1358, r2:0.937, val_loss:0.0812, val_r2:0.923, src_w:1.0000
+e251, train_loss:0.1295, r2:0.938, val_loss:0.0800, val_r2:0.924, src_w:1.0000
+Model successfully saved
+e252, train_loss:0.1239, r2:0.939, val_loss:0.0798, val_r2:0.924, src_w:1.0000
+Model successfully saved
+e253, train_loss:0.1271, r2:0.939, val_loss:0.0794, val_r2:0.925, src_w:1.0000
+Model successfully saved
+e254, train_loss:0.1310, r2:0.939, val_loss:0.0799, val_r2:0.924, src_w:1.0000
+e255, train_loss:0.1269, r2:0.939, val_loss:0.0801, val_r2:0.924, src_w:1.0000
+e256, train_loss:0.1294, r2:0.939, val_loss:0.0800, val_r2:0.924, src_w:1.0000
+e257, train_loss:0.1243, r2:0.939, val_loss:0.0806, val_r2:0.923, src_w:1.0000
+e258, train_loss:0.1407, r2:0.938, val_loss:0.0786, val_r2:0.925, src_w:1.0000
+Model successfully saved
+e259, train_loss:0.1203, r2:0.940, val_loss:0.0809, val_r2:0.923, src_w:1.0000
+e260, train_loss:0.1217, r2:0.939, val_loss:0.0796, val_r2:0.924, src_w:1.0000
+e261, train_loss:0.1302, r2:0.939, val_loss:0.0791, val_r2:0.925, src_w:1.0000
+e262, train_loss:0.1288, r2:0.940, val_loss:0.0822, val_r2:0.922, src_w:1.0000
+e263, train_loss:0.1345, r2:0.937, val_loss:0.0788, val_r2:0.925, src_w:1.0000
+e264, train_loss:0.1317, r2:0.940, val_loss:0.0782, val_r2:0.926, src_w:1.0000
+Model successfully saved
+e265, train_loss:0.1290, r2:0.941, val_loss:0.0785, val_r2:0.925, src_w:1.0000
+e266, train_loss:0.1323, r2:0.941, val_loss:0.0781, val_r2:0.926, src_w:1.0000
+Model successfully saved
+e267, train_loss:0.1386, r2:0.941, val_loss:0.0784, val_r2:0.926, src_w:1.0000
+e268, train_loss:0.1360, r2:0.940, val_loss:0.0783, val_r2:0.926, src_w:1.0000
+e269, train_loss:0.1274, r2:0.941, val_loss:0.0774, val_r2:0.927, src_w:1.0000
+Model successfully saved
+e270, train_loss:0.1217, r2:0.941, val_loss:0.0776, val_r2:0.926, src_w:1.0000
+e271, train_loss:0.1244, r2:0.941, val_loss:0.0776, val_r2:0.926, src_w:1.0000
+e272, train_loss:0.1337, r2:0.942, val_loss:0.0782, val_r2:0.926, src_w:1.0000
+e273, train_loss:0.1267, r2:0.941, val_loss:0.0782, val_r2:0.926, src_w:1.0000
+e274, train_loss:0.1279, r2:0.941, val_loss:0.0784, val_r2:0.926, src_w:1.0000
+e275, train_loss:0.1335, r2:0.941, val_loss:0.0780, val_r2:0.926, src_w:1.0000
+e276, train_loss:0.1292, r2:0.941, val_loss:0.0771, val_r2:0.927, src_w:1.0000
+Model successfully saved
+e277, train_loss:0.1216, r2:0.942, val_loss:0.0796, val_r2:0.924, src_w:1.0000
+e278, train_loss:0.1260, r2:0.940, val_loss:0.0782, val_r2:0.926, src_w:1.0000
+e279, train_loss:0.1226, r2:0.942, val_loss:0.0782, val_r2:0.926, src_w:1.0000
+e280, train_loss:0.1277, r2:0.942, val_loss:0.0778, val_r2:0.926, src_w:1.0000
+e281, train_loss:0.1206, r2:0.942, val_loss:0.0767, val_r2:0.927, src_w:1.0000
+Model successfully saved
+e282, train_loss:0.1279, r2:0.942, val_loss:0.0777, val_r2:0.926, src_w:1.0000
+e283, train_loss:0.1196, r2:0.942, val_loss:0.0767, val_r2:0.927, src_w:1.0000
+e284, train_loss:0.1313, r2:0.943, val_loss:0.0770, val_r2:0.927, src_w:1.0000
+e285, train_loss:0.1195, r2:0.943, val_loss:0.0765, val_r2:0.927, src_w:1.0000
+Model successfully saved
+e286, train_loss:0.1280, r2:0.943, val_loss:0.0768, val_r2:0.927, src_w:1.0000
+e287, train_loss:0.1268, r2:0.943, val_loss:0.0767, val_r2:0.927, src_w:1.0000
+e288, train_loss:0.1377, r2:0.943, val_loss:0.0763, val_r2:0.928, src_w:1.0000
+Model successfully saved
+e289, train_loss:0.1181, r2:0.943, val_loss:0.0758, val_r2:0.928, src_w:1.0000
+Model successfully saved
+e290, train_loss:0.1326, r2:0.943, val_loss:0.0762, val_r2:0.928, src_w:1.0000
+e291, train_loss:0.1263, r2:0.943, val_loss:0.0760, val_r2:0.928, src_w:1.0000
+e292, train_loss:0.1272, r2:0.943, val_loss:0.0765, val_r2:0.927, src_w:1.0000
+e293, train_loss:0.1254, r2:0.944, val_loss:0.0773, val_r2:0.927, src_w:1.0000
+e294, train_loss:0.1222, r2:0.943, val_loss:0.0757, val_r2:0.928, src_w:1.0000
+Model successfully saved
+e295, train_loss:0.1199, r2:0.944, val_loss:0.0758, val_r2:0.928, src_w:1.0000
+e296, train_loss:0.1310, r2:0.944, val_loss:0.0754, val_r2:0.928, src_w:1.0000
+Model successfully saved
+e297, train_loss:0.1266, r2:0.944, val_loss:0.0755, val_r2:0.928, src_w:1.0000
+e298, train_loss:0.1138, r2:0.944, val_loss:0.0759, val_r2:0.928, src_w:1.0000
+e299, train_loss:0.1246, r2:0.944, val_loss:0.0753, val_r2:0.928, src_w:1.0000
+Model successfully saved
+e300, train_loss:0.1212, r2:0.945, val_loss:0.0762, val_r2:0.928, src_w:1.0000
+e301, train_loss:0.1228, r2:0.944, val_loss:0.0760, val_r2:0.928, src_w:1.0000
+e302, train_loss:0.1221, r2:0.944, val_loss:0.0764, val_r2:0.927, src_w:1.0000
+e303, train_loss:0.1263, r2:0.944, val_loss:0.0749, val_r2:0.929, src_w:1.0000
+Model successfully saved
+e304, train_loss:0.1146, r2:0.943, val_loss:0.0756, val_r2:0.928, src_w:1.0000
+e305, train_loss:0.1212, r2:0.944, val_loss:0.0781, val_r2:0.926, src_w:1.0000
+e306, train_loss:0.1248, r2:0.943, val_loss:0.0754, val_r2:0.928, src_w:1.0000
+e307, train_loss:0.1307, r2:0.945, val_loss:0.0783, val_r2:0.926, src_w:1.0000
+e308, train_loss:0.1290, r2:0.943, val_loss:0.0755, val_r2:0.928, src_w:1.0000
+e309, train_loss:0.1274, r2:0.944, val_loss:0.0759, val_r2:0.928, src_w:1.0000
+e310, train_loss:0.1247, r2:0.944, val_loss:0.0759, val_r2:0.928, src_w:1.0000
+e311, train_loss:0.1268, r2:0.943, val_loss:0.0746, val_r2:0.929, src_w:1.0000
+Model successfully saved
+e312, train_loss:0.1261, r2:0.945, val_loss:0.0784, val_r2:0.926, src_w:1.0000
+e313, train_loss:0.1189, r2:0.943, val_loss:0.0743, val_r2:0.929, src_w:1.0000
+Model successfully saved
+e314, train_loss:0.1293, r2:0.946, val_loss:0.0764, val_r2:0.927, src_w:1.0000
+e315, train_loss:0.1250, r2:0.944, val_loss:0.0749, val_r2:0.929, src_w:1.0000
+e316, train_loss:0.1244, r2:0.944, val_loss:0.0745, val_r2:0.929, src_w:1.0000
+e317, train_loss:0.1238, r2:0.945, val_loss:0.0799, val_r2:0.924, src_w:1.0000
+e318, train_loss:0.1323, r2:0.942, val_loss:0.0755, val_r2:0.928, src_w:1.0000
+e319, train_loss:0.1248, r2:0.944, val_loss:0.0760, val_r2:0.928, src_w:1.0000
+e320, train_loss:0.1246, r2:0.945, val_loss:0.0762, val_r2:0.928, src_w:1.0000
+e321, train_loss:0.1276, r2:0.944, val_loss:0.0735, val_r2:0.930, src_w:1.0000
+Model successfully saved
+e322, train_loss:0.1255, r2:0.945, val_loss:0.0742, val_r2:0.930, src_w:1.0000
+e323, train_loss:0.1177, r2:0.946, val_loss:0.0777, val_r2:0.926, src_w:1.0000
+e324, train_loss:0.1343, r2:0.944, val_loss:0.0745, val_r2:0.929, src_w:1.0000
+e325, train_loss:0.1266, r2:0.945, val_loss:0.0735, val_r2:0.930, src_w:1.0000
+Model successfully saved
+e326, train_loss:0.1167, r2:0.946, val_loss:0.0747, val_r2:0.929, src_w:1.0000
+e327, train_loss:0.1217, r2:0.945, val_loss:0.0744, val_r2:0.929, src_w:1.0000
+e328, train_loss:0.1250, r2:0.945, val_loss:0.0730, val_r2:0.931, src_w:1.0000
+Model successfully saved
+e329, train_loss:0.1248, r2:0.947, val_loss:0.0746, val_r2:0.929, src_w:1.0000
+e330, train_loss:0.1264, r2:0.946, val_loss:0.0745, val_r2:0.929, src_w:1.0000
+e331, train_loss:0.1236, r2:0.946, val_loss:0.0732, val_r2:0.931, src_w:1.0000
+e332, train_loss:0.1244, r2:0.947, val_loss:0.0729, val_r2:0.931, src_w:1.0000
+Model successfully saved
+e333, train_loss:0.1257, r2:0.947, val_loss:0.0741, val_r2:0.930, src_w:1.0000
+e334, train_loss:0.1241, r2:0.945, val_loss:0.0722, val_r2:0.931, src_w:1.0000
+Model successfully saved
+e335, train_loss:0.1188, r2:0.947, val_loss:0.0737, val_r2:0.930, src_w:1.0000
+e336, train_loss:0.1237, r2:0.946, val_loss:0.0746, val_r2:0.929, src_w:1.0000
+e337, train_loss:0.1165, r2:0.946, val_loss:0.0730, val_r2:0.931, src_w:1.0000
+e338, train_loss:0.1230, r2:0.947, val_loss:0.0746, val_r2:0.929, src_w:1.0000
+e339, train_loss:0.1216, r2:0.946, val_loss:0.0727, val_r2:0.931, src_w:1.0000
+e340, train_loss:0.1271, r2:0.947, val_loss:0.0726, val_r2:0.931, src_w:1.0000
+e341, train_loss:0.1275, r2:0.947, val_loss:0.0718, val_r2:0.932, src_w:1.0000
+Model successfully saved
+e342, train_loss:0.1228, r2:0.948, val_loss:0.0717, val_r2:0.932, src_w:1.0000
+Model successfully saved
+e343, train_loss:0.1275, r2:0.948, val_loss:0.0720, val_r2:0.932, src_w:1.0000
+e344, train_loss:0.1247, r2:0.948, val_loss:0.0719, val_r2:0.932, src_w:1.0000
+e345, train_loss:0.1276, r2:0.948, val_loss:0.0720, val_r2:0.932, src_w:1.0000
+e346, train_loss:0.1305, r2:0.948, val_loss:0.0717, val_r2:0.932, src_w:1.0000
+e347, train_loss:0.1174, r2:0.948, val_loss:0.0720, val_r2:0.932, src_w:1.0000
+e348, train_loss:0.1218, r2:0.948, val_loss:0.0713, val_r2:0.932, src_w:1.0000
+Model successfully saved
+e349, train_loss:0.1208, r2:0.948, val_loss:0.0712, val_r2:0.932, src_w:1.0000
+Model successfully saved
+e350, train_loss:0.1182, r2:0.948, val_loss:0.0718, val_r2:0.932, src_w:1.0000
+e351, train_loss:0.1180, r2:0.948, val_loss:0.0720, val_r2:0.932, src_w:1.0000
+e352, train_loss:0.1150, r2:0.948, val_loss:0.0731, val_r2:0.931, src_w:1.0000
+e353, train_loss:0.1239, r2:0.947, val_loss:0.0736, val_r2:0.930, src_w:1.0000
+e354, train_loss:0.1318, r2:0.947, val_loss:0.0713, val_r2:0.932, src_w:1.0000
+e355, train_loss:0.1232, r2:0.948, val_loss:0.0749, val_r2:0.929, src_w:1.0000
+e356, train_loss:0.1224, r2:0.946, val_loss:0.0728, val_r2:0.931, src_w:1.0000
+e357, train_loss:0.1254, r2:0.947, val_loss:0.0733, val_r2:0.930, src_w:1.0000
+e358, train_loss:0.1218, r2:0.947, val_loss:0.0764, val_r2:0.927, src_w:1.0000
+e359, train_loss:0.1270, r2:0.945, val_loss:0.0709, val_r2:0.933, src_w:1.0000
+Model successfully saved
+e360, train_loss:0.1210, r2:0.948, val_loss:0.0739, val_r2:0.930, src_w:1.0000
+e361, train_loss:0.1229, r2:0.947, val_loss:0.0747, val_r2:0.929, src_w:1.0000
+e362, train_loss:0.1195, r2:0.945, val_loss:0.0726, val_r2:0.931, src_w:1.0000
+e363, train_loss:0.1214, r2:0.948, val_loss:0.0768, val_r2:0.927, src_w:1.0000
+e364, train_loss:0.1237, r2:0.945, val_loss:0.0711, val_r2:0.932, src_w:1.0000
+e365, train_loss:0.1242, r2:0.948, val_loss:0.0745, val_r2:0.929, src_w:1.0000
+e366, train_loss:0.1241, r2:0.946, val_loss:0.0720, val_r2:0.932, src_w:1.0000
+e367, train_loss:0.1268, r2:0.948, val_loss:0.0709, val_r2:0.933, src_w:1.0000
+e368, train_loss:0.1217, r2:0.948, val_loss:0.0711, val_r2:0.932, src_w:1.0000
+e369, train_loss:0.1211, r2:0.949, val_loss:0.0704, val_r2:0.933, src_w:1.0000
+Model successfully saved
+e370, train_loss:0.1211, r2:0.950, val_loss:0.0716, val_r2:0.932, src_w:1.0000
+e371, train_loss:0.1238, r2:0.949, val_loss:0.0718, val_r2:0.932, src_w:1.0000
+e372, train_loss:0.1249, r2:0.949, val_loss:0.0713, val_r2:0.932, src_w:1.0000
+e373, train_loss:0.1189, r2:0.949, val_loss:0.0706, val_r2:0.933, src_w:1.0000
+e374, train_loss:0.1222, r2:0.949, val_loss:0.0716, val_r2:0.932, src_w:1.0000
+e375, train_loss:0.1187, r2:0.948, val_loss:0.0703, val_r2:0.933, src_w:1.0000
+Model successfully saved
+e376, train_loss:0.1246, r2:0.949, val_loss:0.0701, val_r2:0.933, src_w:1.0000
+Model successfully saved
+e377, train_loss:0.1276, r2:0.949, val_loss:0.0707, val_r2:0.933, src_w:1.0000
+e378, train_loss:0.1288, r2:0.949, val_loss:0.0731, val_r2:0.931, src_w:1.0000
+e379, train_loss:0.1259, r2:0.948, val_loss:0.0725, val_r2:0.931, src_w:1.0000
+e380, train_loss:0.1249, r2:0.949, val_loss:0.0732, val_r2:0.930, src_w:1.0000
+e381, train_loss:0.1205, r2:0.948, val_loss:0.0715, val_r2:0.932, src_w:1.0000
+e382, train_loss:0.1201, r2:0.949, val_loss:0.0720, val_r2:0.932, src_w:1.0000
+e383, train_loss:0.1243, r2:0.948, val_loss:0.0703, val_r2:0.933, src_w:1.0000
+e384, train_loss:0.1225, r2:0.948, val_loss:0.0705, val_r2:0.933, src_w:1.0000
+e385, train_loss:0.1230, r2:0.948, val_loss:0.0701, val_r2:0.933, src_w:1.0000
+Model successfully saved
+e386, train_loss:0.1253, r2:0.950, val_loss:0.0716, val_r2:0.932, src_w:1.0000
+e387, train_loss:0.1209, r2:0.949, val_loss:0.0731, val_r2:0.931, src_w:1.0000
+e388, train_loss:0.1238, r2:0.948, val_loss:0.0722, val_r2:0.931, src_w:1.0000
+e389, train_loss:0.1207, r2:0.948, val_loss:0.0696, val_r2:0.934, src_w:1.0000
+Model successfully saved
+e390, train_loss:0.1145, r2:0.950, val_loss:0.0710, val_r2:0.933, src_w:1.0000
+e391, train_loss:0.1243, r2:0.949, val_loss:0.0696, val_r2:0.934, src_w:1.0000
+Model successfully saved
+e392, train_loss:0.1290, r2:0.950, val_loss:0.0722, val_r2:0.931, src_w:1.0000
+e393, train_loss:0.1232, r2:0.949, val_loss:0.0704, val_r2:0.933, src_w:1.0000
+e394, train_loss:0.1219, r2:0.950, val_loss:0.0701, val_r2:0.933, src_w:1.0000
+e395, train_loss:0.1265, r2:0.950, val_loss:0.0701, val_r2:0.933, src_w:1.0000
+e396, train_loss:0.1203, r2:0.949, val_loss:0.0689, val_r2:0.935, src_w:1.0000
+Model successfully saved
+e397, train_loss:0.1173, r2:0.949, val_loss:0.0715, val_r2:0.932, src_w:1.0000
+e398, train_loss:0.1277, r2:0.949, val_loss:0.0708, val_r2:0.933, src_w:1.0000
+e399, train_loss:0.1227, r2:0.949, val_loss:0.0699, val_r2:0.934, src_w:1.0000
+e400, train_loss:0.1293, r2:0.950, val_loss:0.0726, val_r2:0.931, src_w:1.0000
+e401, train_loss:0.1228, r2:0.948, val_loss:0.0690, val_r2:0.934, src_w:1.0000
+e402, train_loss:0.1285, r2:0.951, val_loss:0.0716, val_r2:0.932, src_w:1.0000
+e403, train_loss:0.1153, r2:0.949, val_loss:0.0701, val_r2:0.933, src_w:1.0000
+e404, train_loss:0.1223, r2:0.951, val_loss:0.0687, val_r2:0.935, src_w:1.0000
+Model successfully saved
+e405, train_loss:0.1246, r2:0.951, val_loss:0.0687, val_r2:0.935, src_w:1.0000
+e406, train_loss:0.1223, r2:0.950, val_loss:0.0689, val_r2:0.935, src_w:1.0000
+e407, train_loss:0.1198, r2:0.950, val_loss:0.0701, val_r2:0.933, src_w:1.0000
+e408, train_loss:0.1244, r2:0.950, val_loss:0.0696, val_r2:0.934, src_w:1.0000
+e409, train_loss:0.1227, r2:0.951, val_loss:0.0702, val_r2:0.933, src_w:1.0000
+e410, train_loss:0.1303, r2:0.950, val_loss:0.0682, val_r2:0.935, src_w:1.0000
+Model successfully saved
+e411, train_loss:0.1196, r2:0.952, val_loss:0.0699, val_r2:0.934, src_w:1.0000
+e412, train_loss:0.1194, r2:0.950, val_loss:0.0693, val_r2:0.934, src_w:1.0000
+e413, train_loss:0.1229, r2:0.951, val_loss:0.0693, val_r2:0.934, src_w:1.0000
+e414, train_loss:0.1186, r2:0.951, val_loss:0.0706, val_r2:0.933, src_w:1.0000
+e415, train_loss:0.1200, r2:0.950, val_loss:0.0685, val_r2:0.935, src_w:1.0000
+e416, train_loss:0.1224, r2:0.952, val_loss:0.0694, val_r2:0.934, src_w:1.0000
+e417, train_loss:0.1174, r2:0.951, val_loss:0.0701, val_r2:0.933, src_w:1.0000
+e418, train_loss:0.1263, r2:0.951, val_loss:0.0684, val_r2:0.935, src_w:1.0000
+e419, train_loss:0.1202, r2:0.952, val_loss:0.0692, val_r2:0.934, src_w:1.0000
+e420, train_loss:0.1239, r2:0.951, val_loss:0.0685, val_r2:0.935, src_w:1.0000
+e421, train_loss:0.1159, r2:0.952, val_loss:0.0684, val_r2:0.935, src_w:1.0000
+e422, train_loss:0.1224, r2:0.952, val_loss:0.0689, val_r2:0.935, src_w:1.0000
+e423, train_loss:0.1277, r2:0.951, val_loss:0.0679, val_r2:0.936, src_w:1.0000
+Model successfully saved
+e424, train_loss:0.1204, r2:0.952, val_loss:0.0689, val_r2:0.935, src_w:1.0000
+e425, train_loss:0.1198, r2:0.951, val_loss:0.0685, val_r2:0.935, src_w:1.0000
+e426, train_loss:0.1316, r2:0.951, val_loss:0.0674, val_r2:0.936, src_w:1.0000
+Model successfully saved
+e427, train_loss:0.1198, r2:0.952, val_loss:0.0701, val_r2:0.933, src_w:1.0000
+e428, train_loss:0.1215, r2:0.950, val_loss:0.0689, val_r2:0.935, src_w:1.0000
+e429, train_loss:0.1311, r2:0.951, val_loss:0.0681, val_r2:0.935, src_w:1.0000
+e430, train_loss:0.1279, r2:0.952, val_loss:0.0699, val_r2:0.934, src_w:1.0000
+e431, train_loss:0.1207, r2:0.951, val_loss:0.0680, val_r2:0.935, src_w:1.0000
+e432, train_loss:0.1172, r2:0.952, val_loss:0.0679, val_r2:0.936, src_w:1.0000
+e433, train_loss:0.1308, r2:0.952, val_loss:0.0670, val_r2:0.936, src_w:1.0000
+Model successfully saved
+e434, train_loss:0.1185, r2:0.953, val_loss:0.0671, val_r2:0.936, src_w:1.0000
+e435, train_loss:0.1216, r2:0.953, val_loss:0.0675, val_r2:0.936, src_w:1.0000
+e436, train_loss:0.1195, r2:0.953, val_loss:0.0681, val_r2:0.935, src_w:1.0000
+e437, train_loss:0.1157, r2:0.953, val_loss:0.0677, val_r2:0.936, src_w:1.0000
+e438, train_loss:0.1194, r2:0.953, val_loss:0.0675, val_r2:0.936, src_w:1.0000
+e439, train_loss:0.1206, r2:0.953, val_loss:0.0677, val_r2:0.936, src_w:1.0000
+e440, train_loss:0.1161, r2:0.952, val_loss:0.0679, val_r2:0.936, src_w:1.0000
+e441, train_loss:0.1237, r2:0.952, val_loss:0.0677, val_r2:0.936, src_w:1.0000
+e442, train_loss:0.1225, r2:0.953, val_loss:0.0682, val_r2:0.935, src_w:1.0000
+e443, train_loss:0.1124, r2:0.952, val_loss:0.0673, val_r2:0.936, src_w:1.0000
+e444, train_loss:0.1223, r2:0.953, val_loss:0.0673, val_r2:0.936, src_w:1.0000
+e445, train_loss:0.1160, r2:0.953, val_loss:0.0685, val_r2:0.935, src_w:1.0000
+e446, train_loss:0.1222, r2:0.952, val_loss:0.0673, val_r2:0.936, src_w:1.0000
+e447, train_loss:0.1208, r2:0.953, val_loss:0.0682, val_r2:0.935, src_w:1.0000
+e448, train_loss:0.1140, r2:0.952, val_loss:0.0677, val_r2:0.936, src_w:1.0000
+e449, train_loss:0.1121, r2:0.953, val_loss:0.0685, val_r2:0.935, src_w:1.0000
+e450, train_loss:0.1214, r2:0.953, val_loss:0.0680, val_r2:0.935, src_w:1.0000
+e451, train_loss:0.1183, r2:0.953, val_loss:0.0675, val_r2:0.936, src_w:1.0000
+e452, train_loss:0.1242, r2:0.953, val_loss:0.0681, val_r2:0.935, src_w:1.0000
+e453, train_loss:0.1261, r2:0.952, val_loss:0.0664, val_r2:0.937, src_w:1.0000
+Model successfully saved
+e454, train_loss:0.1181, r2:0.953, val_loss:0.0706, val_r2:0.933, src_w:1.0000
+e455, train_loss:0.1181, r2:0.952, val_loss:0.0700, val_r2:0.934, src_w:1.0000
+e456, train_loss:0.1258, r2:0.951, val_loss:0.0673, val_r2:0.936, src_w:1.0000
+e457, train_loss:0.1260, r2:0.953, val_loss:0.0685, val_r2:0.935, src_w:1.0000
+e458, train_loss:0.1178, r2:0.952, val_loss:0.0666, val_r2:0.937, src_w:1.0000
+e459, train_loss:0.1131, r2:0.953, val_loss:0.0663, val_r2:0.937, src_w:1.0000
+Model successfully saved
+e460, train_loss:0.1136, r2:0.954, val_loss:0.0667, val_r2:0.937, src_w:1.0000
+e461, train_loss:0.1164, r2:0.954, val_loss:0.0666, val_r2:0.937, src_w:1.0000
+e462, train_loss:0.1243, r2:0.954, val_loss:0.0670, val_r2:0.936, src_w:1.0000
+e463, train_loss:0.1226, r2:0.954, val_loss:0.0681, val_r2:0.935, src_w:1.0000
+e464, train_loss:0.1217, r2:0.953, val_loss:0.0670, val_r2:0.936, src_w:1.0000
+e465, train_loss:0.1152, r2:0.954, val_loss:0.0672, val_r2:0.936, src_w:1.0000
+e466, train_loss:0.1261, r2:0.954, val_loss:0.0662, val_r2:0.937, src_w:1.0000
+Model successfully saved
+e467, train_loss:0.1182, r2:0.954, val_loss:0.0672, val_r2:0.936, src_w:1.0000
+e468, train_loss:0.1201, r2:0.954, val_loss:0.0672, val_r2:0.936, src_w:1.0000
+e469, train_loss:0.1265, r2:0.954, val_loss:0.0689, val_r2:0.935, src_w:1.0000
+e470, train_loss:0.1189, r2:0.953, val_loss:0.0680, val_r2:0.935, src_w:1.0000
+e471, train_loss:0.1232, r2:0.953, val_loss:0.0666, val_r2:0.937, src_w:1.0000
+e472, train_loss:0.1218, r2:0.953, val_loss:0.0683, val_r2:0.935, src_w:1.0000
+e473, train_loss:0.1269, r2:0.952, val_loss:0.0674, val_r2:0.936, src_w:1.0000
+e474, train_loss:0.1214, r2:0.953, val_loss:0.0660, val_r2:0.937, src_w:1.0000
+Model successfully saved
+e475, train_loss:0.1225, r2:0.954, val_loss:0.0676, val_r2:0.936, src_w:1.0000
+e476, train_loss:0.1125, r2:0.953, val_loss:0.0677, val_r2:0.936, src_w:1.0000
+e477, train_loss:0.1169, r2:0.954, val_loss:0.0677, val_r2:0.936, src_w:1.0000
+e478, train_loss:0.1138, r2:0.954, val_loss:0.0673, val_r2:0.936, src_w:1.0000
+e479, train_loss:0.1232, r2:0.954, val_loss:0.0662, val_r2:0.937, src_w:1.0000
+e480, train_loss:0.1149, r2:0.955, val_loss:0.0659, val_r2:0.937, src_w:1.0000
+Model successfully saved
+e481, train_loss:0.1096, r2:0.954, val_loss:0.0658, val_r2:0.938, src_w:1.0000
+Model successfully saved
+e482, train_loss:0.1151, r2:0.954, val_loss:0.0662, val_r2:0.937, src_w:1.0000
+e483, train_loss:0.1229, r2:0.955, val_loss:0.0662, val_r2:0.937, src_w:1.0000
+e484, train_loss:0.1137, r2:0.955, val_loss:0.0679, val_r2:0.936, src_w:1.0000
+e485, train_loss:0.1154, r2:0.954, val_loss:0.0675, val_r2:0.936, src_w:1.0000
+e486, train_loss:0.1171, r2:0.954, val_loss:0.0661, val_r2:0.937, src_w:1.0000
+e487, train_loss:0.1160, r2:0.955, val_loss:0.0674, val_r2:0.936, src_w:1.0000
+e488, train_loss:0.1157, r2:0.953, val_loss:0.0664, val_r2:0.937, src_w:1.0000
+e489, train_loss:0.1098, r2:0.953, val_loss:0.0663, val_r2:0.937, src_w:1.0000
+e490, train_loss:0.1255, r2:0.954, val_loss:0.0704, val_r2:0.933, src_w:1.0000
+e491, train_loss:0.1208, r2:0.952, val_loss:0.0670, val_r2:0.936, src_w:1.0000
+e492, train_loss:0.1209, r2:0.954, val_loss:0.0686, val_r2:0.935, src_w:1.0000
+e493, train_loss:0.1156, r2:0.953, val_loss:0.0685, val_r2:0.935, src_w:1.0000
+e494, train_loss:0.1160, r2:0.953, val_loss:0.0666, val_r2:0.937, src_w:1.0000
+e495, train_loss:0.1125, r2:0.954, val_loss:0.0679, val_r2:0.936, src_w:1.0000
+e496, train_loss:0.1173, r2:0.954, val_loss:0.0684, val_r2:0.935, src_w:1.0000
+e497, train_loss:0.1230, r2:0.953, val_loss:0.0652, val_r2:0.938, src_w:1.0000
+Model successfully saved
+e498, train_loss:0.1105, r2:0.955, val_loss:0.0658, val_r2:0.938, src_w:1.0000
+e499, train_loss:0.1176, r2:0.955, val_loss:0.0651, val_r2:0.938, src_w:1.0000
+Model successfully saved
+e500, train_loss:0.1147, r2:0.955, val_loss:0.0651, val_r2:0.938, src_w:1.0000
+Model successfully saved
+e501, train_loss:0.1154, r2:0.955, val_loss:0.0655, val_r2:0.938, src_w:1.0000
+e502, train_loss:0.1191, r2:0.955, val_loss:0.0659, val_r2:0.937, src_w:1.0000
+e503, train_loss:0.1147, r2:0.955, val_loss:0.0661, val_r2:0.937, src_w:1.0000
+e504, train_loss:0.1177, r2:0.955, val_loss:0.0661, val_r2:0.937, src_w:1.0000
+e505, train_loss:0.1164, r2:0.955, val_loss:0.0675, val_r2:0.936, src_w:1.0000
+e506, train_loss:0.1136, r2:0.953, val_loss:0.0653, val_r2:0.938, src_w:1.0000
+e507, train_loss:0.1156, r2:0.955, val_loss:0.0687, val_r2:0.935, src_w:1.0000
+e508, train_loss:0.1157, r2:0.951, val_loss:0.0683, val_r2:0.935, src_w:1.0000
+e509, train_loss:0.1173, r2:0.953, val_loss:0.0653, val_r2:0.938, src_w:1.0000
+e510, train_loss:0.1213, r2:0.956, val_loss:0.0677, val_r2:0.936, src_w:1.0000
+e511, train_loss:0.1125, r2:0.954, val_loss:0.0652, val_r2:0.938, src_w:1.0000
+e512, train_loss:0.1190, r2:0.956, val_loss:0.0650, val_r2:0.938, src_w:1.0000
+Model successfully saved
+e513, train_loss:0.1120, r2:0.955, val_loss:0.0644, val_r2:0.939, src_w:1.0000
+Model successfully saved
+e514, train_loss:0.1225, r2:0.956, val_loss:0.0647, val_r2:0.939, src_w:1.0000
+e515, train_loss:0.1199, r2:0.956, val_loss:0.0660, val_r2:0.937, src_w:1.0000
+e516, train_loss:0.1204, r2:0.956, val_loss:0.0669, val_r2:0.936, src_w:1.0000
+e517, train_loss:0.1162, r2:0.954, val_loss:0.0646, val_r2:0.939, src_w:1.0000
+e518, train_loss:0.1119, r2:0.956, val_loss:0.0666, val_r2:0.937, src_w:1.0000
+e519, train_loss:0.1184, r2:0.955, val_loss:0.0659, val_r2:0.937, src_w:1.0000
+e520, train_loss:0.1306, r2:0.955, val_loss:0.0646, val_r2:0.939, src_w:1.0000
+e521, train_loss:0.1114, r2:0.956, val_loss:0.0689, val_r2:0.935, src_w:1.0000
+e522, train_loss:0.1114, r2:0.953, val_loss:0.0661, val_r2:0.937, src_w:1.0000
+e523, train_loss:0.1215, r2:0.955, val_loss:0.0651, val_r2:0.938, src_w:1.0000
+e524, train_loss:0.1255, r2:0.956, val_loss:0.0683, val_r2:0.935, src_w:1.0000
+e525, train_loss:0.1212, r2:0.954, val_loss:0.0651, val_r2:0.938, src_w:1.0000
+e526, train_loss:0.1190, r2:0.956, val_loss:0.0654, val_r2:0.938, src_w:1.0000
+e527, train_loss:0.1125, r2:0.955, val_loss:0.0661, val_r2:0.937, src_w:1.0000
+e528, train_loss:0.1092, r2:0.954, val_loss:0.0647, val_r2:0.939, src_w:1.0000
+e529, train_loss:0.1106, r2:0.956, val_loss:0.0676, val_r2:0.936, src_w:1.0000
+e530, train_loss:0.1179, r2:0.954, val_loss:0.0652, val_r2:0.938, src_w:1.0000
+e531, train_loss:0.1148, r2:0.956, val_loss:0.0650, val_r2:0.938, src_w:1.0000
+e532, train_loss:0.1214, r2:0.956, val_loss:0.0650, val_r2:0.938, src_w:1.0000
+e533, train_loss:0.1141, r2:0.956, val_loss:0.0644, val_r2:0.939, src_w:1.0000
+Model successfully saved
+e534, train_loss:0.1220, r2:0.957, val_loss:0.0652, val_r2:0.938, src_w:1.0000
+e535, train_loss:0.1184, r2:0.956, val_loss:0.0643, val_r2:0.939, src_w:1.0000
+Model successfully saved
+e536, train_loss:0.1226, r2:0.957, val_loss:0.0640, val_r2:0.939, src_w:1.0000
+Model successfully saved
+e537, train_loss:0.1135, r2:0.957, val_loss:0.0640, val_r2:0.939, src_w:1.0000
+e538, train_loss:0.1132, r2:0.957, val_loss:0.0636, val_r2:0.940, src_w:1.0000
+Model successfully saved
+e539, train_loss:0.1163, r2:0.957, val_loss:0.0639, val_r2:0.939, src_w:1.0000
+e540, train_loss:0.1264, r2:0.957, val_loss:0.0641, val_r2:0.939, src_w:1.0000
+e541, train_loss:0.1174, r2:0.957, val_loss:0.0637, val_r2:0.939, src_w:1.0000
+e542, train_loss:0.1205, r2:0.957, val_loss:0.0662, val_r2:0.937, src_w:1.0000
+e543, train_loss:0.1162, r2:0.955, val_loss:0.0661, val_r2:0.937, src_w:1.0000
+e544, train_loss:0.1167, r2:0.955, val_loss:0.0647, val_r2:0.939, src_w:1.0000
+e545, train_loss:0.1245, r2:0.956, val_loss:0.0689, val_r2:0.935, src_w:1.0000
+e546, train_loss:0.1131, r2:0.954, val_loss:0.0642, val_r2:0.939, src_w:1.0000
+e547, train_loss:0.1229, r2:0.957, val_loss:0.0669, val_r2:0.936, src_w:1.0000
+e548, train_loss:0.1086, r2:0.954, val_loss:0.0683, val_r2:0.935, src_w:1.0000
+e549, train_loss:0.1148, r2:0.954, val_loss:0.0639, val_r2:0.939, src_w:1.0000
+e550, train_loss:0.1113, r2:0.957, val_loss:0.0674, val_r2:0.936, src_w:1.0000
+e551, train_loss:0.1225, r2:0.954, val_loss:0.0659, val_r2:0.937, src_w:1.0000
+e552, train_loss:0.1220, r2:0.956, val_loss:0.0657, val_r2:0.938, src_w:1.0000
+e553, train_loss:0.1091, r2:0.957, val_loss:0.0686, val_r2:0.935, src_w:1.0000
+e554, train_loss:0.1200, r2:0.954, val_loss:0.0642, val_r2:0.939, src_w:1.0000
+e555, train_loss:0.1175, r2:0.957, val_loss:0.0647, val_r2:0.939, src_w:1.0000
+e556, train_loss:0.1211, r2:0.957, val_loss:0.0634, val_r2:0.940, src_w:1.0000
+Model successfully saved
+e557, train_loss:0.1157, r2:0.957, val_loss:0.0634, val_r2:0.940, src_w:1.0000
+e558, train_loss:0.1220, r2:0.957, val_loss:0.0632, val_r2:0.940, src_w:1.0000
+Model successfully saved
+e559, train_loss:0.1246, r2:0.958, val_loss:0.0648, val_r2:0.939, src_w:1.0000
+e560, train_loss:0.1135, r2:0.957, val_loss:0.0645, val_r2:0.939, src_w:1.0000
+e561, train_loss:0.1200, r2:0.957, val_loss:0.0651, val_r2:0.938, src_w:1.0000
+e562, train_loss:0.1289, r2:0.957, val_loss:0.0684, val_r2:0.935, src_w:1.0000
+e563, train_loss:0.1227, r2:0.954, val_loss:0.0642, val_r2:0.939, src_w:1.0000
+e564, train_loss:0.1179, r2:0.958, val_loss:0.0663, val_r2:0.937, src_w:1.0000
+e565, train_loss:0.1188, r2:0.955, val_loss:0.0643, val_r2:0.939, src_w:1.0000
+e566, train_loss:0.1245, r2:0.957, val_loss:0.0630, val_r2:0.940, src_w:1.0000
+Model successfully saved
+e567, train_loss:0.1076, r2:0.958, val_loss:0.0638, val_r2:0.939, src_w:1.0000
+e568, train_loss:0.1177, r2:0.957, val_loss:0.0635, val_r2:0.940, src_w:1.0000
+e569, train_loss:0.1164, r2:0.958, val_loss:0.0646, val_r2:0.939, src_w:1.0000
+e570, train_loss:0.1141, r2:0.957, val_loss:0.0645, val_r2:0.939, src_w:1.0000
+e571, train_loss:0.1146, r2:0.957, val_loss:0.0661, val_r2:0.937, src_w:1.0000
+e572, train_loss:0.1144, r2:0.956, val_loss:0.0659, val_r2:0.937, src_w:1.0000
+e573, train_loss:0.1184, r2:0.956, val_loss:0.0644, val_r2:0.939, src_w:1.0000
+e574, train_loss:0.1148, r2:0.957, val_loss:0.0663, val_r2:0.937, src_w:1.0000
+e575, train_loss:0.1159, r2:0.954, val_loss:0.0653, val_r2:0.938, src_w:1.0000
+e576, train_loss:0.1123, r2:0.956, val_loss:0.0628, val_r2:0.940, src_w:1.0000
+Model successfully saved
+e577, train_loss:0.1106, r2:0.958, val_loss:0.0642, val_r2:0.939, src_w:1.0000
+e578, train_loss:0.1145, r2:0.958, val_loss:0.0650, val_r2:0.938, src_w:1.0000
+e579, train_loss:0.1155, r2:0.957, val_loss:0.0644, val_r2:0.939, src_w:1.0000
+e580, train_loss:0.1110, r2:0.958, val_loss:0.0644, val_r2:0.939, src_w:1.0000
+e581, train_loss:0.1199, r2:0.957, val_loss:0.0628, val_r2:0.940, src_w:1.0000
+e582, train_loss:0.1154, r2:0.958, val_loss:0.0653, val_r2:0.938, src_w:1.0000
+e583, train_loss:0.1096, r2:0.957, val_loss:0.0642, val_r2:0.939, src_w:1.0000
+e584, train_loss:0.1068, r2:0.957, val_loss:0.0637, val_r2:0.940, src_w:1.0000
+e585, train_loss:0.1161, r2:0.958, val_loss:0.0671, val_r2:0.936, src_w:1.0000
+e586, train_loss:0.1120, r2:0.956, val_loss:0.0637, val_r2:0.940, src_w:1.0000
+e587, train_loss:0.1137, r2:0.958, val_loss:0.0649, val_r2:0.938, src_w:1.0000
+e588, train_loss:0.1141, r2:0.958, val_loss:0.0639, val_r2:0.939, src_w:1.0000
+e589, train_loss:0.1153, r2:0.958, val_loss:0.0631, val_r2:0.940, src_w:1.0000
+e590, train_loss:0.1112, r2:0.958, val_loss:0.0650, val_r2:0.938, src_w:1.0000
+e591, train_loss:0.1104, r2:0.957, val_loss:0.0655, val_r2:0.938, src_w:1.0000
+e592, train_loss:0.1200, r2:0.956, val_loss:0.0634, val_r2:0.940, src_w:1.0000
+e593, train_loss:0.1185, r2:0.959, val_loss:0.0651, val_r2:0.938, src_w:1.0000
+e594, train_loss:0.1190, r2:0.956, val_loss:0.0642, val_r2:0.939, src_w:1.0000
+e595, train_loss:0.1148, r2:0.957, val_loss:0.0625, val_r2:0.941, src_w:1.0000
+Model successfully saved
+e596, train_loss:0.1078, r2:0.958, val_loss:0.0630, val_r2:0.940, src_w:1.0000
+e597, train_loss:0.1178, r2:0.958, val_loss:0.0647, val_r2:0.939, src_w:1.0000
+e598, train_loss:0.1180, r2:0.958, val_loss:0.0636, val_r2:0.940, src_w:1.0000
+e599, train_loss:0.1162, r2:0.958, val_loss:0.0634, val_r2:0.940, src_w:1.0000
+e600, train_loss:0.1221, r2:0.958, val_loss:0.0649, val_r2:0.938, src_w:1.0000
+e601, train_loss:0.1171, r2:0.958, val_loss:0.0638, val_r2:0.939, src_w:1.0000
+e602, train_loss:0.1145, r2:0.958, val_loss:0.0639, val_r2:0.939, src_w:1.0000
+e603, train_loss:0.1137, r2:0.958, val_loss:0.0620, val_r2:0.941, src_w:1.0000
+Model successfully saved
+e604, train_loss:0.1109, r2:0.958, val_loss:0.0626, val_r2:0.941, src_w:1.0000
+e605, train_loss:0.1134, r2:0.958, val_loss:0.0629, val_r2:0.940, src_w:1.0000
+e606, train_loss:0.1212, r2:0.959, val_loss:0.0642, val_r2:0.939, src_w:1.0000
+e607, train_loss:0.1179, r2:0.958, val_loss:0.0651, val_r2:0.938, src_w:1.0000
+e608, train_loss:0.1145, r2:0.958, val_loss:0.0631, val_r2:0.940, src_w:1.0000
+e609, train_loss:0.1093, r2:0.959, val_loss:0.0628, val_r2:0.940, src_w:1.0000
+e610, train_loss:0.1152, r2:0.958, val_loss:0.0628, val_r2:0.940, src_w:1.0000
+e611, train_loss:0.1142, r2:0.959, val_loss:0.0633, val_r2:0.940, src_w:1.0000
+e612, train_loss:0.1132, r2:0.959, val_loss:0.0642, val_r2:0.939, src_w:1.0000
+e613, train_loss:0.1151, r2:0.958, val_loss:0.0629, val_r2:0.940, src_w:1.0000
+e614, train_loss:0.1230, r2:0.959, val_loss:0.0636, val_r2:0.940, src_w:1.0000
+e615, train_loss:0.1051, r2:0.958, val_loss:0.0625, val_r2:0.941, src_w:1.0000
+e616, train_loss:0.1193, r2:0.959, val_loss:0.0634, val_r2:0.940, src_w:1.0000
+e617, train_loss:0.1199, r2:0.958, val_loss:0.0651, val_r2:0.938, src_w:1.0000
+e618, train_loss:0.1183, r2:0.958, val_loss:0.0627, val_r2:0.941, src_w:1.0000
+e619, train_loss:0.1180, r2:0.959, val_loss:0.0629, val_r2:0.940, src_w:1.0000
+e620, train_loss:0.1195, r2:0.959, val_loss:0.0625, val_r2:0.941, src_w:1.0000
+e621, train_loss:0.1166, r2:0.959, val_loss:0.0617, val_r2:0.941, src_w:1.0000
+Model successfully saved
+e622, train_loss:0.1137, r2:0.960, val_loss:0.0616, val_r2:0.942, src_w:1.0000
+Model successfully saved
+e623, train_loss:0.1112, r2:0.959, val_loss:0.0617, val_r2:0.941, src_w:1.0000
+e624, train_loss:0.1193, r2:0.960, val_loss:0.0622, val_r2:0.941, src_w:1.0000
+e625, train_loss:0.1190, r2:0.960, val_loss:0.0635, val_r2:0.940, src_w:1.0000
+e626, train_loss:0.1114, r2:0.959, val_loss:0.0631, val_r2:0.940, src_w:1.0000
+e627, train_loss:0.1147, r2:0.959, val_loss:0.0625, val_r2:0.941, src_w:1.0000
+e628, train_loss:0.1180, r2:0.959, val_loss:0.0624, val_r2:0.941, src_w:1.0000
+e629, train_loss:0.1149, r2:0.959, val_loss:0.0635, val_r2:0.940, src_w:1.0000
+e630, train_loss:0.1144, r2:0.958, val_loss:0.0636, val_r2:0.940, src_w:1.0000
+e631, train_loss:0.1197, r2:0.958, val_loss:0.0623, val_r2:0.941, src_w:1.0000
+e632, train_loss:0.1129, r2:0.960, val_loss:0.0657, val_r2:0.938, src_w:1.0000
+e633, train_loss:0.1157, r2:0.957, val_loss:0.0680, val_r2:0.935, src_w:1.0000
+e634, train_loss:0.1184, r2:0.954, val_loss:0.0624, val_r2:0.941, src_w:1.0000
+e635, train_loss:0.1156, r2:0.958, val_loss:0.0722, val_r2:0.931, src_w:1.0000
+e636, train_loss:0.1096, r2:0.952, val_loss:0.0732, val_r2:0.931, src_w:1.0000
+e637, train_loss:0.1180, r2:0.950, val_loss:0.0615, val_r2:0.942, src_w:1.0000
+Model successfully saved
+e638, train_loss:0.1097, r2:0.960, val_loss:0.0667, val_r2:0.937, src_w:1.0000
+e639, train_loss:0.1286, r2:0.956, val_loss:0.0645, val_r2:0.939, src_w:1.0000
+e640, train_loss:0.1128, r2:0.958, val_loss:0.0630, val_r2:0.940, src_w:1.0000
+e641, train_loss:0.1133, r2:0.959, val_loss:0.0643, val_r2:0.939, src_w:1.0000
+e642, train_loss:0.1112, r2:0.958, val_loss:0.0629, val_r2:0.940, src_w:1.0000
+e643, train_loss:0.1158, r2:0.959, val_loss:0.0645, val_r2:0.939, src_w:1.0000
+e644, train_loss:0.1171, r2:0.959, val_loss:0.0645, val_r2:0.939, src_w:1.0000
+e645, train_loss:0.1197, r2:0.958, val_loss:0.0627, val_r2:0.940, src_w:1.0000
+e646, train_loss:0.1136, r2:0.960, val_loss:0.0646, val_r2:0.939, src_w:1.0000
+e647, train_loss:0.1185, r2:0.959, val_loss:0.0614, val_r2:0.942, src_w:1.0000
+Model successfully saved
+e648, train_loss:0.1107, r2:0.960, val_loss:0.0620, val_r2:0.941, src_w:1.0000
+e649, train_loss:0.1104, r2:0.959, val_loss:0.0624, val_r2:0.941, src_w:1.0000
+e650, train_loss:0.1078, r2:0.960, val_loss:0.0622, val_r2:0.941, src_w:1.0000
+e651, train_loss:0.1132, r2:0.960, val_loss:0.0645, val_r2:0.939, src_w:1.0000
+e652, train_loss:0.1062, r2:0.959, val_loss:0.0630, val_r2:0.940, src_w:1.0000
+e653, train_loss:0.1063, r2:0.960, val_loss:0.0640, val_r2:0.939, src_w:1.0000
+e654, train_loss:0.1100, r2:0.959, val_loss:0.0660, val_r2:0.937, src_w:1.0000
+e655, train_loss:0.1114, r2:0.957, val_loss:0.0612, val_r2:0.942, src_w:1.0000
+Model successfully saved
+e656, train_loss:0.1094, r2:0.960, val_loss:0.0619, val_r2:0.941, src_w:1.0000
+e657, train_loss:0.1202, r2:0.960, val_loss:0.0627, val_r2:0.941, src_w:1.0000
+e658, train_loss:0.1045, r2:0.960, val_loss:0.0631, val_r2:0.940, src_w:1.0000
+e659, train_loss:0.1123, r2:0.960, val_loss:0.0624, val_r2:0.941, src_w:1.0000
+e660, train_loss:0.1158, r2:0.961, val_loss:0.0615, val_r2:0.942, src_w:1.0000
+e661, train_loss:0.1074, r2:0.961, val_loss:0.0616, val_r2:0.942, src_w:1.0000
+e662, train_loss:0.1091, r2:0.960, val_loss:0.0618, val_r2:0.941, src_w:1.0000
+e663, train_loss:0.1071, r2:0.961, val_loss:0.0629, val_r2:0.940, src_w:1.0000
+e664, train_loss:0.1115, r2:0.960, val_loss:0.0636, val_r2:0.940, src_w:1.0000
+e665, train_loss:0.1248, r2:0.959, val_loss:0.0627, val_r2:0.940, src_w:1.0000
+e666, train_loss:0.1156, r2:0.960, val_loss:0.0648, val_r2:0.939, src_w:1.0000
+e667, train_loss:0.1137, r2:0.959, val_loss:0.0646, val_r2:0.939, src_w:1.0000
+e668, train_loss:0.1156, r2:0.958, val_loss:0.0618, val_r2:0.941, src_w:1.0000
+e669, train_loss:0.1104, r2:0.960, val_loss:0.0662, val_r2:0.937, src_w:1.0000
+e670, train_loss:0.1121, r2:0.956, val_loss:0.0658, val_r2:0.938, src_w:1.0000
+e671, train_loss:0.1177, r2:0.957, val_loss:0.0611, val_r2:0.942, src_w:1.0000
+Model successfully saved
+e672, train_loss:0.1159, r2:0.961, val_loss:0.0652, val_r2:0.938, src_w:1.0000
+e673, train_loss:0.1168, r2:0.958, val_loss:0.0646, val_r2:0.939, src_w:1.0000
+e674, train_loss:0.1190, r2:0.958, val_loss:0.0610, val_r2:0.942, src_w:1.0000
+Model successfully saved
+e675, train_loss:0.1188, r2:0.961, val_loss:0.0636, val_r2:0.940, src_w:1.0000
+e676, train_loss:0.1201, r2:0.959, val_loss:0.0655, val_r2:0.938, src_w:1.0000
+e677, train_loss:0.1080, r2:0.959, val_loss:0.0630, val_r2:0.940, src_w:1.0000
+e678, train_loss:0.1168, r2:0.960, val_loss:0.0625, val_r2:0.941, src_w:1.0000
+e679, train_loss:0.1133, r2:0.960, val_loss:0.0631, val_r2:0.940, src_w:1.0000
+e680, train_loss:0.1125, r2:0.960, val_loss:0.0603, val_r2:0.943, src_w:1.0000
+Model successfully saved
+e681, train_loss:0.1146, r2:0.960, val_loss:0.0611, val_r2:0.942, src_w:1.0000
+e682, train_loss:0.1109, r2:0.961, val_loss:0.0631, val_r2:0.940, src_w:1.0000
+e683, train_loss:0.1129, r2:0.960, val_loss:0.0633, val_r2:0.940, src_w:1.0000
+e684, train_loss:0.1075, r2:0.960, val_loss:0.0635, val_r2:0.940, src_w:1.0000
+e685, train_loss:0.1087, r2:0.960, val_loss:0.0611, val_r2:0.942, src_w:1.0000
+e686, train_loss:0.1156, r2:0.961, val_loss:0.0608, val_r2:0.942, src_w:1.0000
+e687, train_loss:0.1056, r2:0.960, val_loss:0.0616, val_r2:0.942, src_w:1.0000
+e688, train_loss:0.1160, r2:0.960, val_loss:0.0614, val_r2:0.942, src_w:1.0000
+e689, train_loss:0.1110, r2:0.961, val_loss:0.0617, val_r2:0.941, src_w:1.0000
+e690, train_loss:0.1075, r2:0.962, val_loss:0.0628, val_r2:0.940, src_w:1.0000
+e691, train_loss:0.1162, r2:0.961, val_loss:0.0631, val_r2:0.940, src_w:1.0000
+e692, train_loss:0.1084, r2:0.961, val_loss:0.0611, val_r2:0.942, src_w:1.0000
+e693, train_loss:0.1122, r2:0.962, val_loss:0.0609, val_r2:0.942, src_w:1.0000
+e694, train_loss:0.1120, r2:0.960, val_loss:0.0609, val_r2:0.942, src_w:1.0000
+e695, train_loss:0.1141, r2:0.961, val_loss:0.0648, val_r2:0.938, src_w:1.0000
+e696, train_loss:0.1106, r2:0.959, val_loss:0.0630, val_r2:0.940, src_w:1.0000
+e697, train_loss:0.1103, r2:0.960, val_loss:0.0617, val_r2:0.941, src_w:1.0000
+e698, train_loss:0.1085, r2:0.961, val_loss:0.0669, val_r2:0.936, src_w:1.0000
+e699, train_loss:0.1104, r2:0.957, val_loss:0.0619, val_r2:0.941, src_w:1.0000
+e700, train_loss:0.1081, r2:0.960, val_loss:0.0614, val_r2:0.942, src_w:1.0000
+e701, train_loss:0.1028, r2:0.961, val_loss:0.0623, val_r2:0.941, src_w:1.0000
+e702, train_loss:0.1057, r2:0.961, val_loss:0.0612, val_r2:0.942, src_w:1.0000
+e703, train_loss:0.1092, r2:0.962, val_loss:0.0612, val_r2:0.942, src_w:1.0000
+e704, train_loss:0.1221, r2:0.962, val_loss:0.0611, val_r2:0.942, src_w:1.0000
+e705, train_loss:0.1102, r2:0.961, val_loss:0.0610, val_r2:0.942, src_w:1.0000
+e706, train_loss:0.1157, r2:0.961, val_loss:0.0620, val_r2:0.941, src_w:1.0000
+e707, train_loss:0.1060, r2:0.960, val_loss:0.0624, val_r2:0.941, src_w:1.0000
+e708, train_loss:0.1082, r2:0.961, val_loss:0.0620, val_r2:0.941, src_w:1.0000
+e709, train_loss:0.1029, r2:0.962, val_loss:0.0629, val_r2:0.940, src_w:1.0000
+e710, train_loss:0.1093, r2:0.961, val_loss:0.0619, val_r2:0.941, src_w:1.0000
+e711, train_loss:0.1182, r2:0.962, val_loss:0.0599, val_r2:0.943, src_w:1.0000
+Model successfully saved
+e712, train_loss:0.1086, r2:0.961, val_loss:0.0601, val_r2:0.943, src_w:1.0000
+e713, train_loss:0.1133, r2:0.961, val_loss:0.0609, val_r2:0.942, src_w:1.0000
+e714, train_loss:0.1072, r2:0.961, val_loss:0.0613, val_r2:0.942, src_w:1.0000
+e715, train_loss:0.1125, r2:0.962, val_loss:0.0613, val_r2:0.942, src_w:1.0000
+e716, train_loss:0.1081, r2:0.961, val_loss:0.0606, val_r2:0.942, src_w:1.0000
+e717, train_loss:0.1033, r2:0.961, val_loss:0.0611, val_r2:0.942, src_w:1.0000
+e718, train_loss:0.1153, r2:0.961, val_loss:0.0609, val_r2:0.942, src_w:1.0000
+e719, train_loss:0.1101, r2:0.962, val_loss:0.0601, val_r2:0.943, src_w:1.0000
+e720, train_loss:0.1134, r2:0.963, val_loss:0.0611, val_r2:0.942, src_w:1.0000
+e721, train_loss:0.1145, r2:0.962, val_loss:0.0603, val_r2:0.943, src_w:1.0000
+e722, train_loss:0.1125, r2:0.962, val_loss:0.0620, val_r2:0.941, src_w:1.0000
+e723, train_loss:0.1171, r2:0.962, val_loss:0.0619, val_r2:0.941, src_w:1.0000
+e724, train_loss:0.1068, r2:0.961, val_loss:0.0601, val_r2:0.943, src_w:1.0000
+e725, train_loss:0.1015, r2:0.962, val_loss:0.0620, val_r2:0.941, src_w:1.0000
+e726, train_loss:0.1036, r2:0.962, val_loss:0.0627, val_r2:0.940, src_w:1.0000
+e727, train_loss:0.1054, r2:0.960, val_loss:0.0605, val_r2:0.943, src_w:1.0000
+e728, train_loss:0.1087, r2:0.962, val_loss:0.0629, val_r2:0.940, src_w:1.0000
+e729, train_loss:0.1084, r2:0.961, val_loss:0.0647, val_r2:0.939, src_w:1.0000
+e730, train_loss:0.1125, r2:0.959, val_loss:0.0603, val_r2:0.943, src_w:1.0000
+e731, train_loss:0.1148, r2:0.961, val_loss:0.0636, val_r2:0.940, src_w:1.0000
+e732, train_loss:0.1088, r2:0.960, val_loss:0.0630, val_r2:0.940, src_w:1.0000
+e733, train_loss:0.1148, r2:0.960, val_loss:0.0611, val_r2:0.942, src_w:1.0000
+e734, train_loss:0.1116, r2:0.962, val_loss:0.0605, val_r2:0.943, src_w:1.0000
+e735, train_loss:0.1108, r2:0.962, val_loss:0.0606, val_r2:0.942, src_w:1.0000
+e736, train_loss:0.1068, r2:0.962, val_loss:0.0606, val_r2:0.942, src_w:1.0000
+e737, train_loss:0.1132, r2:0.962, val_loss:0.0600, val_r2:0.943, src_w:1.0000
+e738, train_loss:0.1049, r2:0.963, val_loss:0.0603, val_r2:0.943, src_w:1.0000
+e739, train_loss:0.1108, r2:0.963, val_loss:0.0597, val_r2:0.943, src_w:1.0000
+Model successfully saved
+e740, train_loss:0.1054, r2:0.963, val_loss:0.0600, val_r2:0.943, src_w:1.0000
+e741, train_loss:0.1035, r2:0.963, val_loss:0.0603, val_r2:0.943, src_w:1.0000
+e742, train_loss:0.1048, r2:0.963, val_loss:0.0604, val_r2:0.943, src_w:1.0000
+e743, train_loss:0.1137, r2:0.963, val_loss:0.0604, val_r2:0.943, src_w:1.0000
+e744, train_loss:0.1047, r2:0.963, val_loss:0.0599, val_r2:0.943, src_w:1.0000
+e745, train_loss:0.1011, r2:0.963, val_loss:0.0597, val_r2:0.943, src_w:1.0000
+Model successfully saved
+e746, train_loss:0.0987, r2:0.963, val_loss:0.0602, val_r2:0.943, src_w:1.0000
+e747, train_loss:0.1144, r2:0.963, val_loss:0.0608, val_r2:0.942, src_w:1.0000
+e748, train_loss:0.1178, r2:0.963, val_loss:0.0618, val_r2:0.941, src_w:1.0000
+e749, train_loss:0.1108, r2:0.962, val_loss:0.0609, val_r2:0.942, src_w:1.0000
+e750, train_loss:0.1085, r2:0.963, val_loss:0.0598, val_r2:0.943, src_w:1.0000
+e751, train_loss:0.1133, r2:0.963, val_loss:0.0596, val_r2:0.943, src_w:1.0000
+Model successfully saved
+e752, train_loss:0.1110, r2:0.963, val_loss:0.0600, val_r2:0.943, src_w:1.0000
+e753, train_loss:0.1091, r2:0.963, val_loss:0.0600, val_r2:0.943, src_w:1.0000
+e754, train_loss:0.1115, r2:0.963, val_loss:0.0604, val_r2:0.943, src_w:1.0000
+e755, train_loss:0.1076, r2:0.963, val_loss:0.0603, val_r2:0.943, src_w:1.0000
+e756, train_loss:0.1030, r2:0.963, val_loss:0.0608, val_r2:0.942, src_w:1.0000
+e757, train_loss:0.1143, r2:0.963, val_loss:0.0618, val_r2:0.941, src_w:1.0000
+e758, train_loss:0.1125, r2:0.962, val_loss:0.0606, val_r2:0.942, src_w:1.0000
+e759, train_loss:0.1077, r2:0.963, val_loss:0.0624, val_r2:0.941, src_w:1.0000
+e760, train_loss:0.1199, r2:0.961, val_loss:0.0598, val_r2:0.943, src_w:1.0000
+e761, train_loss:0.1112, r2:0.962, val_loss:0.0608, val_r2:0.942, src_w:1.0000
+e762, train_loss:0.1101, r2:0.962, val_loss:0.0614, val_r2:0.942, src_w:1.0000
+e763, train_loss:0.1088, r2:0.963, val_loss:0.0619, val_r2:0.941, src_w:1.0000
+e764, train_loss:0.1148, r2:0.962, val_loss:0.0617, val_r2:0.941, src_w:1.0000
+e765, train_loss:0.1112, r2:0.962, val_loss:0.0622, val_r2:0.941, src_w:1.0000
+e766, train_loss:0.1025, r2:0.962, val_loss:0.0634, val_r2:0.940, src_w:1.0000
+e767, train_loss:0.1074, r2:0.960, val_loss:0.0595, val_r2:0.943, src_w:1.0000
+Model successfully saved
+e768, train_loss:0.1113, r2:0.963, val_loss:0.0599, val_r2:0.943, src_w:1.0000
+e769, train_loss:0.1074, r2:0.963, val_loss:0.0594, val_r2:0.944, src_w:1.0000
+Model successfully saved
+e770, train_loss:0.1074, r2:0.964, val_loss:0.0608, val_r2:0.942, src_w:1.0000
+e771, train_loss:0.1145, r2:0.963, val_loss:0.0610, val_r2:0.942, src_w:1.0000
+e772, train_loss:0.1099, r2:0.963, val_loss:0.0595, val_r2:0.943, src_w:1.0000
+e773, train_loss:0.1164, r2:0.964, val_loss:0.0600, val_r2:0.943, src_w:1.0000
+e774, train_loss:0.1078, r2:0.963, val_loss:0.0599, val_r2:0.943, src_w:1.0000
+e775, train_loss:0.1109, r2:0.963, val_loss:0.0603, val_r2:0.943, src_w:1.0000
+e776, train_loss:0.1055, r2:0.963, val_loss:0.0608, val_r2:0.942, src_w:1.0000
+e777, train_loss:0.1047, r2:0.963, val_loss:0.0610, val_r2:0.942, src_w:1.0000
+e778, train_loss:0.1082, r2:0.963, val_loss:0.0594, val_r2:0.944, src_w:1.0000
+Model successfully saved
+e779, train_loss:0.1101, r2:0.964, val_loss:0.0604, val_r2:0.943, src_w:1.0000
+e780, train_loss:0.1091, r2:0.963, val_loss:0.0617, val_r2:0.941, src_w:1.0000
+e781, train_loss:0.1037, r2:0.962, val_loss:0.0595, val_r2:0.943, src_w:1.0000
+e782, train_loss:0.1060, r2:0.964, val_loss:0.0622, val_r2:0.941, src_w:1.0000
+e783, train_loss:0.1098, r2:0.963, val_loss:0.0648, val_r2:0.939, src_w:1.0000
+e784, train_loss:0.1072, r2:0.960, val_loss:0.0592, val_r2:0.944, src_w:1.0000
+Model successfully saved
+e785, train_loss:0.1050, r2:0.963, val_loss:0.0621, val_r2:0.941, src_w:1.0000
+e786, train_loss:0.1078, r2:0.962, val_loss:0.0639, val_r2:0.939, src_w:1.0000
+e787, train_loss:0.1020, r2:0.961, val_loss:0.0595, val_r2:0.944, src_w:1.0000
+e788, train_loss:0.1056, r2:0.964, val_loss:0.0607, val_r2:0.942, src_w:1.0000
+e789, train_loss:0.1147, r2:0.963, val_loss:0.0617, val_r2:0.941, src_w:1.0000
+e790, train_loss:0.1145, r2:0.963, val_loss:0.0613, val_r2:0.942, src_w:1.0000
+e791, train_loss:0.1172, r2:0.962, val_loss:0.0598, val_r2:0.943, src_w:1.0000
+e792, train_loss:0.1103, r2:0.963, val_loss:0.0616, val_r2:0.942, src_w:1.0000
+e793, train_loss:0.1164, r2:0.963, val_loss:0.0638, val_r2:0.939, src_w:1.0000
+e794, train_loss:0.1006, r2:0.961, val_loss:0.0601, val_r2:0.943, src_w:1.0000
+e795, train_loss:0.1054, r2:0.962, val_loss:0.0611, val_r2:0.942, src_w:1.0000
+e796, train_loss:0.1061, r2:0.963, val_loss:0.0668, val_r2:0.937, src_w:1.0000
+e797, train_loss:0.1116, r2:0.958, val_loss:0.0600, val_r2:0.943, src_w:1.0000
+e798, train_loss:0.1053, r2:0.963, val_loss:0.0622, val_r2:0.941, src_w:1.0000
+e799, train_loss:0.1064, r2:0.963, val_loss:0.0639, val_r2:0.939, src_w:1.0000
+e800, train_loss:0.1117, r2:0.961, val_loss:0.0597, val_r2:0.943, src_w:1.0000
+e801, train_loss:0.1059, r2:0.964, val_loss:0.0607, val_r2:0.942, src_w:1.0000
+e802, train_loss:0.1056, r2:0.963, val_loss:0.0596, val_r2:0.943, src_w:1.0000
+e803, train_loss:0.1111, r2:0.963, val_loss:0.0579, val_r2:0.945, src_w:1.0000
+Model successfully saved
+e804, train_loss:0.1081, r2:0.964, val_loss:0.0628, val_r2:0.940, src_w:1.0000
+e805, train_loss:0.1140, r2:0.961, val_loss:0.0607, val_r2:0.942, src_w:1.0000
+e806, train_loss:0.1041, r2:0.964, val_loss:0.0613, val_r2:0.942, src_w:1.0000
+e807, train_loss:0.1136, r2:0.964, val_loss:0.0610, val_r2:0.942, src_w:1.0000
+e808, train_loss:0.1040, r2:0.963, val_loss:0.0584, val_r2:0.945, src_w:1.0000
+e809, train_loss:0.1081, r2:0.964, val_loss:0.0587, val_r2:0.944, src_w:1.0000
+e810, train_loss:0.1139, r2:0.964, val_loss:0.0596, val_r2:0.943, src_w:1.0000
+e811, train_loss:0.1040, r2:0.964, val_loss:0.0590, val_r2:0.944, src_w:1.0000
+e812, train_loss:0.1065, r2:0.965, val_loss:0.0594, val_r2:0.944, src_w:1.0000
+e813, train_loss:0.1041, r2:0.965, val_loss:0.0608, val_r2:0.942, src_w:1.0000
+e814, train_loss:0.1034, r2:0.964, val_loss:0.0602, val_r2:0.943, src_w:1.0000
+e815, train_loss:0.1043, r2:0.964, val_loss:0.0584, val_r2:0.945, src_w:1.0000
+e816, train_loss:0.1014, r2:0.964, val_loss:0.0591, val_r2:0.944, src_w:1.0000
+e817, train_loss:0.1077, r2:0.964, val_loss:0.0589, val_r2:0.944, src_w:1.0000
+e818, train_loss:0.1053, r2:0.964, val_loss:0.0597, val_r2:0.943, src_w:1.0000
+e819, train_loss:0.1022, r2:0.965, val_loss:0.0609, val_r2:0.942, src_w:1.0000
+e820, train_loss:0.1071, r2:0.964, val_loss:0.0598, val_r2:0.943, src_w:1.0000
+e821, train_loss:0.1087, r2:0.965, val_loss:0.0584, val_r2:0.945, src_w:1.0000
+e822, train_loss:0.1080, r2:0.965, val_loss:0.0585, val_r2:0.944, src_w:1.0000
+e823, train_loss:0.1045, r2:0.963, val_loss:0.0595, val_r2:0.944, src_w:1.0000
+e824, train_loss:0.1059, r2:0.965, val_loss:0.0610, val_r2:0.942, src_w:1.0000
+e825, train_loss:0.1119, r2:0.963, val_loss:0.0607, val_r2:0.942, src_w:1.0000
+e826, train_loss:0.1043, r2:0.964, val_loss:0.0594, val_r2:0.944, src_w:1.0000
+e827, train_loss:0.1192, r2:0.965, val_loss:0.0595, val_r2:0.944, src_w:1.0000
+e828, train_loss:0.1071, r2:0.964, val_loss:0.0600, val_r2:0.943, src_w:1.0000
+e829, train_loss:0.1035, r2:0.965, val_loss:0.0596, val_r2:0.943, src_w:1.0000
+e830, train_loss:0.1040, r2:0.965, val_loss:0.0597, val_r2:0.943, src_w:1.0000
+e831, train_loss:0.1147, r2:0.965, val_loss:0.0601, val_r2:0.943, src_w:1.0000
+e832, train_loss:0.1043, r2:0.964, val_loss:0.0584, val_r2:0.945, src_w:1.0000
+e833, train_loss:0.1022, r2:0.965, val_loss:0.0591, val_r2:0.944, src_w:1.0000
+e834, train_loss:0.1038, r2:0.965, val_loss:0.0590, val_r2:0.944, src_w:1.0000
+e835, train_loss:0.1053, r2:0.965, val_loss:0.0587, val_r2:0.944, src_w:1.0000
+e836, train_loss:0.1054, r2:0.965, val_loss:0.0591, val_r2:0.944, src_w:1.0000
+e837, train_loss:0.1104, r2:0.965, val_loss:0.0592, val_r2:0.944, src_w:1.0000
+e838, train_loss:0.0966, r2:0.965, val_loss:0.0588, val_r2:0.944, src_w:1.0000
+e839, train_loss:0.0980, r2:0.965, val_loss:0.0587, val_r2:0.944, src_w:1.0000
+e840, train_loss:0.1046, r2:0.965, val_loss:0.0592, val_r2:0.944, src_w:1.0000
+e841, train_loss:0.1077, r2:0.965, val_loss:0.0598, val_r2:0.943, src_w:1.0000
+e842, train_loss:0.1033, r2:0.965, val_loss:0.0599, val_r2:0.943, src_w:1.0000
+e843, train_loss:0.1080, r2:0.965, val_loss:0.0597, val_r2:0.943, src_w:1.0000
+e844, train_loss:0.1083, r2:0.965, val_loss:0.0592, val_r2:0.944, src_w:1.0000
+e845, train_loss:0.1095, r2:0.965, val_loss:0.0588, val_r2:0.944, src_w:1.0000
+e846, train_loss:0.1110, r2:0.966, val_loss:0.0608, val_r2:0.942, src_w:1.0000
+e847, train_loss:0.0998, r2:0.964, val_loss:0.0603, val_r2:0.943, src_w:1.0000
+e848, train_loss:0.1132, r2:0.965, val_loss:0.0594, val_r2:0.944, src_w:1.0000
+e849, train_loss:0.1143, r2:0.965, val_loss:0.0614, val_r2:0.942, src_w:1.0000
+e850, train_loss:0.1039, r2:0.964, val_loss:0.0602, val_r2:0.943, src_w:1.0000
+e851, train_loss:0.0969, r2:0.964, val_loss:0.0594, val_r2:0.944, src_w:1.0000
+e852, train_loss:0.1052, r2:0.965, val_loss:0.0583, val_r2:0.945, src_w:1.0000
+e853, train_loss:0.1069, r2:0.966, val_loss:0.0594, val_r2:0.944, src_w:1.0000
+e854, train_loss:0.0977, r2:0.965, val_loss:0.0601, val_r2:0.943, src_w:1.0000
+e855, train_loss:0.1051, r2:0.965, val_loss:0.0591, val_r2:0.944, src_w:1.0000
+e856, train_loss:0.1084, r2:0.963, val_loss:0.0591, val_r2:0.944, src_w:1.0000
+e857, train_loss:0.1068, r2:0.966, val_loss:0.0647, val_r2:0.939, src_w:1.0000
+e858, train_loss:0.1053, r2:0.962, val_loss:0.0616, val_r2:0.941, src_w:1.0000
+e859, train_loss:0.1063, r2:0.964, val_loss:0.0590, val_r2:0.944, src_w:1.0000
+e860, train_loss:0.1117, r2:0.965, val_loss:0.0600, val_r2:0.943, src_w:1.0000
+e861, train_loss:0.1023, r2:0.965, val_loss:0.0596, val_r2:0.943, src_w:1.0000
+e862, train_loss:0.1115, r2:0.964, val_loss:0.0585, val_r2:0.944, src_w:1.0000
+e863, train_loss:0.1013, r2:0.965, val_loss:0.0598, val_r2:0.943, src_w:1.0000
+e864, train_loss:0.1022, r2:0.965, val_loss:0.0596, val_r2:0.943, src_w:1.0000
+e865, train_loss:0.1026, r2:0.965, val_loss:0.0587, val_r2:0.944, src_w:1.0000
+e866, train_loss:0.1053, r2:0.966, val_loss:0.0585, val_r2:0.944, src_w:1.0000
+e867, train_loss:0.1102, r2:0.966, val_loss:0.0581, val_r2:0.945, src_w:1.0000
+e868, train_loss:0.1052, r2:0.966, val_loss:0.0592, val_r2:0.944, src_w:1.0000
+e869, train_loss:0.1034, r2:0.965, val_loss:0.0594, val_r2:0.944, src_w:1.0000
+e870, train_loss:0.1090, r2:0.965, val_loss:0.0604, val_r2:0.943, src_w:1.0000
+e871, train_loss:0.1091, r2:0.965, val_loss:0.0604, val_r2:0.943, src_w:1.0000
+e872, train_loss:0.1102, r2:0.966, val_loss:0.0598, val_r2:0.943, src_w:1.0000
+e873, train_loss:0.1073, r2:0.966, val_loss:0.0616, val_r2:0.942, src_w:1.0000
+e874, train_loss:0.1103, r2:0.964, val_loss:0.0605, val_r2:0.943, src_w:1.0000
+e875, train_loss:0.1103, r2:0.964, val_loss:0.0579, val_r2:0.945, src_w:1.0000
+Model successfully saved
+e876, train_loss:0.1073, r2:0.966, val_loss:0.0597, val_r2:0.943, src_w:1.0000
+e877, train_loss:0.1097, r2:0.964, val_loss:0.0602, val_r2:0.943, src_w:1.0000
+e878, train_loss:0.1005, r2:0.965, val_loss:0.0619, val_r2:0.941, src_w:1.0000
+e879, train_loss:0.1028, r2:0.964, val_loss:0.0626, val_r2:0.941, src_w:1.0000
+e880, train_loss:0.1043, r2:0.963, val_loss:0.0574, val_r2:0.945, src_w:1.0000
+Model successfully saved
+e881, train_loss:0.1016, r2:0.965, val_loss:0.0617, val_r2:0.941, src_w:1.0000
+e882, train_loss:0.1082, r2:0.963, val_loss:0.0611, val_r2:0.942, src_w:1.0000
+e883, train_loss:0.1063, r2:0.963, val_loss:0.0611, val_r2:0.942, src_w:1.0000
+e884, train_loss:0.1128, r2:0.965, val_loss:0.0604, val_r2:0.943, src_w:1.0000
+e885, train_loss:0.1061, r2:0.966, val_loss:0.0596, val_r2:0.943, src_w:1.0000
+e886, train_loss:0.1041, r2:0.966, val_loss:0.0601, val_r2:0.943, src_w:1.0000
+e887, train_loss:0.1045, r2:0.966, val_loss:0.0585, val_r2:0.944, src_w:1.0000
+e888, train_loss:0.1065, r2:0.966, val_loss:0.0582, val_r2:0.945, src_w:1.0000
+e889, train_loss:0.1046, r2:0.966, val_loss:0.0592, val_r2:0.944, src_w:1.0000
+e890, train_loss:0.0979, r2:0.966, val_loss:0.0590, val_r2:0.944, src_w:1.0000
+e891, train_loss:0.1124, r2:0.966, val_loss:0.0588, val_r2:0.944, src_w:1.0000
+e892, train_loss:0.1049, r2:0.966, val_loss:0.0597, val_r2:0.943, src_w:1.0000
+e893, train_loss:0.1009, r2:0.966, val_loss:0.0594, val_r2:0.944, src_w:1.0000
+e894, train_loss:0.1018, r2:0.965, val_loss:0.0590, val_r2:0.944, src_w:1.0000
+e895, train_loss:0.1088, r2:0.965, val_loss:0.0586, val_r2:0.944, src_w:1.0000
+e896, train_loss:0.1012, r2:0.966, val_loss:0.0606, val_r2:0.943, src_w:1.0000
+e897, train_loss:0.1046, r2:0.965, val_loss:0.0618, val_r2:0.941, src_w:1.0000
+e898, train_loss:0.1104, r2:0.964, val_loss:0.0596, val_r2:0.943, src_w:1.0000
+e899, train_loss:0.1093, r2:0.966, val_loss:0.0595, val_r2:0.944, src_w:1.0000
+e900, train_loss:0.0994, r2:0.966, val_loss:0.0583, val_r2:0.945, src_w:1.0000
+e901, train_loss:0.1008, r2:0.967, val_loss:0.0592, val_r2:0.944, src_w:1.0000
+e902, train_loss:0.1039, r2:0.966, val_loss:0.0579, val_r2:0.945, src_w:1.0000
+e903, train_loss:0.1027, r2:0.966, val_loss:0.0591, val_r2:0.944, src_w:1.0000
+e904, train_loss:0.1071, r2:0.965, val_loss:0.0621, val_r2:0.941, src_w:1.0000
+e905, train_loss:0.1119, r2:0.964, val_loss:0.0602, val_r2:0.943, src_w:1.0000
+e906, train_loss:0.1057, r2:0.965, val_loss:0.0597, val_r2:0.943, src_w:1.0000
+e907, train_loss:0.1079, r2:0.967, val_loss:0.0614, val_r2:0.942, src_w:1.0000
+e908, train_loss:0.1051, r2:0.964, val_loss:0.0589, val_r2:0.944, src_w:1.0000
+e909, train_loss:0.1038, r2:0.965, val_loss:0.0585, val_r2:0.944, src_w:1.0000
+e910, train_loss:0.1053, r2:0.966, val_loss:0.0602, val_r2:0.943, src_w:1.0000
+e911, train_loss:0.1097, r2:0.966, val_loss:0.0634, val_r2:0.940, src_w:1.0000
+e912, train_loss:0.1051, r2:0.963, val_loss:0.0635, val_r2:0.940, src_w:1.0000
+e913, train_loss:0.1059, r2:0.964, val_loss:0.0592, val_r2:0.944, src_w:1.0000
+e914, train_loss:0.1000, r2:0.966, val_loss:0.0581, val_r2:0.945, src_w:1.0000
+e915, train_loss:0.0990, r2:0.967, val_loss:0.0608, val_r2:0.942, src_w:1.0000
+e916, train_loss:0.1084, r2:0.965, val_loss:0.0594, val_r2:0.944, src_w:1.0000
+e917, train_loss:0.1103, r2:0.966, val_loss:0.0599, val_r2:0.943, src_w:1.0000
+e918, train_loss:0.1065, r2:0.966, val_loss:0.0583, val_r2:0.945, src_w:1.0000
+e919, train_loss:0.0985, r2:0.967, val_loss:0.0596, val_r2:0.943, src_w:1.0000
+e920, train_loss:0.1090, r2:0.965, val_loss:0.0610, val_r2:0.942, src_w:1.0000
+e921, train_loss:0.1084, r2:0.965, val_loss:0.0604, val_r2:0.943, src_w:1.0000
+e922, train_loss:0.1141, r2:0.966, val_loss:0.0624, val_r2:0.941, src_w:1.0000
+e923, train_loss:0.1071, r2:0.964, val_loss:0.0614, val_r2:0.942, src_w:1.0000
+e924, train_loss:0.1049, r2:0.965, val_loss:0.0582, val_r2:0.945, src_w:1.0000
+e925, train_loss:0.1000, r2:0.966, val_loss:0.0581, val_r2:0.945, src_w:1.0000
+e926, train_loss:0.1006, r2:0.967, val_loss:0.0586, val_r2:0.944, src_w:1.0000
+e927, train_loss:0.1030, r2:0.967, val_loss:0.0591, val_r2:0.944, src_w:1.0000
+e928, train_loss:0.1063, r2:0.967, val_loss:0.0590, val_r2:0.944, src_w:1.0000
+e929, train_loss:0.1041, r2:0.967, val_loss:0.0586, val_r2:0.944, src_w:1.0000
+e930, train_loss:0.1101, r2:0.967, val_loss:0.0584, val_r2:0.945, src_w:1.0000
+e931, train_loss:0.1035, r2:0.966, val_loss:0.0587, val_r2:0.944, src_w:1.0000
+e932, train_loss:0.1070, r2:0.966, val_loss:0.0579, val_r2:0.945, src_w:1.0000
+e933, train_loss:0.1097, r2:0.967, val_loss:0.0597, val_r2:0.943, src_w:1.0000
+e934, train_loss:0.1053, r2:0.966, val_loss:0.0615, val_r2:0.942, src_w:1.0000
+e935, train_loss:0.1106, r2:0.966, val_loss:0.0588, val_r2:0.944, src_w:1.0000
+e936, train_loss:0.1077, r2:0.967, val_loss:0.0588, val_r2:0.944, src_w:1.0000
+e937, train_loss:0.1106, r2:0.966, val_loss:0.0655, val_r2:0.938, src_w:1.0000
+e938, train_loss:0.1087, r2:0.962, val_loss:0.0641, val_r2:0.939, src_w:1.0000
+e939, train_loss:0.1031, r2:0.962, val_loss:0.0604, val_r2:0.943, src_w:1.0000
+e940, train_loss:0.1141, r2:0.966, val_loss:0.0651, val_r2:0.938, src_w:1.0000
+e941, train_loss:0.1025, r2:0.964, val_loss:0.0709, val_r2:0.933, src_w:1.0000
+e942, train_loss:0.1153, r2:0.956, val_loss:0.0611, val_r2:0.942, src_w:1.0000
+e943, train_loss:0.1028, r2:0.964, val_loss:0.0653, val_r2:0.938, src_w:1.0000
+e944, train_loss:0.1082, r2:0.959, val_loss:0.0736, val_r2:0.930, src_w:1.0000
+e945, train_loss:0.1087, r2:0.956, val_loss:0.0680, val_r2:0.935, src_w:1.0000
+e946, train_loss:0.1126, r2:0.960, val_loss:0.0594, val_r2:0.944, src_w:1.0000
+e947, train_loss:0.1000, r2:0.965, val_loss:0.0623, val_r2:0.941, src_w:1.0000
+e948, train_loss:0.1098, r2:0.964, val_loss:0.0688, val_r2:0.935, src_w:1.0000
+e949, train_loss:0.1121, r2:0.958, val_loss:0.0596, val_r2:0.943, src_w:1.0000
+e950, train_loss:0.1043, r2:0.965, val_loss:0.0606, val_r2:0.942, src_w:1.0000
+e951, train_loss:0.0981, r2:0.965, val_loss:0.0643, val_r2:0.939, src_w:1.0000
+e952, train_loss:0.1065, r2:0.963, val_loss:0.0578, val_r2:0.945, src_w:1.0000
+e953, train_loss:0.1067, r2:0.967, val_loss:0.0618, val_r2:0.941, src_w:1.0000
+e954, train_loss:0.1088, r2:0.964, val_loss:0.0603, val_r2:0.943, src_w:1.0000
+/mnt/d/python_timing_gnn/timing_1_31/Timing-Pred-Code/src/train_balanced_sampling_sep_mlp_shared_calib_step5a_feat_opt.py:645: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with th.cuda.amp.autocast(enabled=amp_on):
+e955, train_loss:0.0995, r2:0.966, val_loss:0.0585, val_r2:0.944, src_w:1.0000
+e956, train_loss:0.1129, r2:0.966, val_loss:0.0604, val_r2:0.943, src_w:1.0000
+e957, train_loss:0.0997, r2:0.965, val_loss:0.0628, val_r2:0.940, src_w:1.0000
+e958, train_loss:0.1085, r2:0.964, val_loss:0.0606, val_r2:0.943, src_w:1.0000
+e959, train_loss:0.1124, r2:0.965, val_loss:0.0603, val_r2:0.943, src_w:1.0000
+e960, train_loss:0.1040, r2:0.967, val_loss:0.0635, val_r2:0.940, src_w:1.0000
+e961, train_loss:0.1077, r2:0.964, val_loss:0.0579, val_r2:0.945, src_w:1.0000
+e962, train_loss:0.1055, r2:0.967, val_loss:0.0579, val_r2:0.945, src_w:1.0000
+e963, train_loss:0.1045, r2:0.967, val_loss:0.0595, val_r2:0.944, src_w:1.0000
+e964, train_loss:0.1017, r2:0.966, val_loss:0.0598, val_r2:0.943, src_w:1.0000
+e965, train_loss:0.1073, r2:0.966, val_loss:0.0619, val_r2:0.941, src_w:1.0000
+e966, train_loss:0.1128, r2:0.965, val_loss:0.0586, val_r2:0.944, src_w:1.0000
+e967, train_loss:0.1079, r2:0.967, val_loss:0.0593, val_r2:0.944, src_w:1.0000
+e968, train_loss:0.1097, r2:0.966, val_loss:0.0614, val_r2:0.942, src_w:1.0000
+e969, train_loss:0.1025, r2:0.964, val_loss:0.0626, val_r2:0.941, src_w:1.0000
+e970, train_loss:0.1124, r2:0.962, val_loss:0.0627, val_r2:0.940, src_w:1.0000
+e971, train_loss:0.1046, r2:0.963, val_loss:0.0608, val_r2:0.942, src_w:1.0000
+e972, train_loss:0.1089, r2:0.966, val_loss:0.0708, val_r2:0.933, src_w:1.0000
+e973, train_loss:0.1134, r2:0.959, val_loss:0.0643, val_r2:0.939, src_w:1.0000
+e974, train_loss:0.1083, r2:0.963, val_loss:0.0590, val_r2:0.944, src_w:1.0000
+e975, train_loss:0.0995, r2:0.967, val_loss:0.0663, val_r2:0.937, src_w:1.0000
+e976, train_loss:0.1137, r2:0.960, val_loss:0.0622, val_r2:0.941, src_w:1.0000
+e977, train_loss:0.1045, r2:0.963, val_loss:0.0582, val_r2:0.945, src_w:1.0000
+e978, train_loss:0.1078, r2:0.966, val_loss:0.0634, val_r2:0.940, src_w:1.0000
+e979, train_loss:0.1069, r2:0.963, val_loss:0.0624, val_r2:0.941, src_w:1.0000
+e980, train_loss:0.0996, r2:0.965, val_loss:0.0605, val_r2:0.943, src_w:1.0000
+e981, train_loss:0.1094, r2:0.967, val_loss:0.0612, val_r2:0.942, src_w:1.0000
+e982, train_loss:0.1054, r2:0.965, val_loss:0.0580, val_r2:0.945, src_w:1.0000
+e983, train_loss:0.1066, r2:0.966, val_loss:0.0596, val_r2:0.943, src_w:1.0000
+e984, train_loss:0.1065, r2:0.966, val_loss:0.0609, val_r2:0.942, src_w:1.0000
+e985, train_loss:0.1052, r2:0.964, val_loss:0.0574, val_r2:0.945, src_w:1.0000
+Model successfully saved
+e986, train_loss:0.1035, r2:0.967, val_loss:0.0606, val_r2:0.942, src_w:1.0000
+e987, train_loss:0.0899, r2:0.966, val_loss:0.0589, val_r2:0.944, src_w:1.0000
+e988, train_loss:0.0976, r2:0.967, val_loss:0.0584, val_r2:0.945, src_w:1.0000
+e989, train_loss:0.1019, r2:0.968, val_loss:0.0593, val_r2:0.944, src_w:1.0000
+e990, train_loss:0.1023, r2:0.967, val_loss:0.0581, val_r2:0.945, src_w:1.0000
+e991, train_loss:0.1043, r2:0.968, val_loss:0.0583, val_r2:0.945, src_w:1.0000
+e992, train_loss:0.1043, r2:0.968, val_loss:0.0584, val_r2:0.945, src_w:1.0000
+e993, train_loss:0.1075, r2:0.968, val_loss:0.0574, val_r2:0.945, src_w:1.0000
+e994, train_loss:0.1097, r2:0.969, val_loss:0.0578, val_r2:0.945, src_w:1.0000
+e995, train_loss:0.0977, r2:0.968, val_loss:0.0578, val_r2:0.945, src_w:1.0000
+e996, train_loss:0.1024, r2:0.968, val_loss:0.0576, val_r2:0.945, src_w:1.0000
+e997, train_loss:0.1071, r2:0.968, val_loss:0.0584, val_r2:0.945, src_w:1.0000
+e998, train_loss:0.1019, r2:0.968, val_loss:0.0582, val_r2:0.945, src_w:1.0000
+e999, train_loss:0.1016, r2:0.968, val_loss:0.0595, val_r2:0.944, src_w:1.0000
+[Best] epoch:986, val_r2:0.9455, val_loss:0.057412, ckpt:model_sep_hgat_step5a_feat_lr_only/ckpt_best.pt
