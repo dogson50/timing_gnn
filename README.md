@@ -17,6 +17,39 @@
     --split_seed 42
     --dataset_pkl_name dataset.pkl
 
+## 当前最优版本（cell_type 划分）
+
+当前最佳脚本：
+
+    src/train_balanced_sampling_sep_mlp_shared_calib_step13_pseudo_label_opt.py
+
+对应日志：
+
+    copilot_train_logs/train_balanced_sampling_sep_mlp_shared_calib_step13_pseudo_label_opt.log
+
+当前最佳结果（来自日志末尾 `[Global Best]`）：
+
+    val_r2 = 0.9220
+    val_loss = 0.079134
+    ckpt = model_step13_pseudo_label/ckpt_best.pt
+
+运行指令（在仓库根目录执行）：
+
+    /home/xiaojun/anaconda3/bin/conda run -p /home/xiaojun/anaconda3/envs/gnn_timing1 --no-capture-output \
+    python /mnt/d/python_timing_gnn/timing_1_31/Timing-Pred-Code/src/train_balanced_sampling_sep_mlp_shared_calib_step13_pseudo_label_opt.py \
+    --freeze_hgat --dedup_z --num_epoch 1000 --learning_rate 1e-3 --batch_size 1350 \
+    --model_saving_dir model_step13_pseudo_label --data_save_path output --dataset_pkl_name dataset.pkl
+
+脚本在做什么：
+
+- 在 `shared_calib + step5a_msselect` 主干上做 3 轮 self-training。
+- 第 1 轮仅用已标注 target 样本训练；每轮结束保存最佳 checkpoint。
+- 用该轮最佳模型对 69 个未标注 target 样本预测，生成伪标签，加入下一轮训练集。
+- 第 2/3 轮从上一轮最佳参数 warm-start，并继续联合 src/tgt 平衡采样训练。
+- 默认会同时保存终端日志到：
+  `copilot_train_logs/train_balanced_sampling_sep_mlp_shared_calib_step13_pseudo_label_opt.log`、
+  `model_step13_pseudo_label/stdout.log`、`model_step13_pseudo_label/stderr.log`。
+
 ## 训练（HGAT + MLP 回归）
 进入目录 './src'，执行：
 

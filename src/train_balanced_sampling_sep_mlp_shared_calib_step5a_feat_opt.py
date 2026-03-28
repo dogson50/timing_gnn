@@ -14,7 +14,7 @@ import dgl
 from options import get_options
 import tee
 
-from hgat import HGATDesignEncoder
+from hgat import HGATDesignEncoder, build_dgl_graph_from_devs_rich
 from spi2graph import parse_top_subckt_pins
 
 NUMERIC_COLS = [
@@ -33,6 +33,7 @@ TARGET_COL = "delay"
 ENCODER_LR_SCALE_DEFAULT = 0.2
 GRAPH_NET_DIM = 7
 GRAPH_MOS_DIM = 8
+CKPT_R2_TIE_EPS_DEFAULT = 1e-4
 
 
 def _ensure_pol_bit(df):
@@ -190,125 +191,7 @@ def parse_transistors_spice_rich(text):
 
 
 def build_dgl_graph_from_devs_step5(devs, top_pins):
-    nets = {}
-
-    def net_id(n):
-        if n not in nets:
-            nets[n] = len(nets)
-        return nets[n]
-
-    p_count = 0
-    n_count = 0
-    p_devs = []
-    n_devs = []
-
-    gate_src_p, gate_dst_p = [], []
-    gate_src_n, gate_dst_n = [], []
-    sd_src_p, sd_dst_p = [], []
-    sd_src_n, sd_dst_n = [], []
-
-    for d in devs:
-        if str(d.get("type", "")).startswith("p"):
-            mid = p_count
-            p_count += 1
-            p_devs.append(d)
-            gate_src_p.append(net_id(d["g"]))
-            gate_dst_p.append(mid)
-            sd_src_p.extend([mid, mid])
-            sd_dst_p.extend([net_id(d["s"]), net_id(d["d"])])
-        elif str(d.get("type", "")).startswith("n"):
-            mid = n_count
-            n_count += 1
-            n_devs.append(d)
-            gate_src_n.append(net_id(d["g"]))
-            gate_dst_n.append(mid)
-            sd_src_n.extend([mid, mid])
-            sd_dst_n.extend([net_id(d["s"]), net_id(d["d"])])
-
-    data_dict = {}
-    if p_count > 0:
-        data_dict[("NET", "gate_of", "PMOS")] = (th.tensor(gate_src_p), th.tensor(gate_dst_p))
-        data_dict[("PMOS", "sd_to", "NET")] = (th.tensor(sd_src_p), th.tensor(sd_dst_p))
-        data_dict[("NET", "back_sd", "PMOS")] = (th.tensor(sd_dst_p), th.tensor(sd_src_p))
-    if n_count > 0:
-        data_dict[("NET", "gate_of", "NMOS")] = (th.tensor(gate_src_n), th.tensor(gate_dst_n))
-        data_dict[("NMOS", "sd_to", "NET")] = (th.tensor(sd_src_n), th.tensor(sd_dst_n))
-        data_dict[("NET", "back_sd", "NMOS")] = (th.tensor(sd_dst_n), th.tensor(sd_src_n))
-
-    g = dgl.heterograph(data_dict, num_nodes_dict={"NET": len(nets), "PMOS": p_count, "NMOS": n_count})
-
-    gate_deg = np.zeros(len(nets), dtype=np.float32)
-    sd_deg = np.zeros(len(nets), dtype=np.float32)
-    for nid in gate_src_p + gate_src_n:
-        gate_deg[int(nid)] += 1.0
-    for nid in sd_dst_p + sd_dst_n:
-        sd_deg[int(nid)] += 1.0
-    deg = gate_deg + sd_deg
-
-    max_deg = float(max(1.0, deg.max() if deg.size > 0 else 1.0))
-    max_gate_deg = float(max(1.0, gate_deg.max() if gate_deg.size > 0 else 1.0))
-    max_sd_deg = float(max(1.0, sd_deg.max() if sd_deg.size > 0 else 1.0))
-
-    top_pin_set = set(str(p).upper() for p in (top_pins or []))
-    rail_set = {"VDD", "VPWR", "VCC", "VSS", "VGND", "GND"}
-    f_net = []
-    for name, nid in sorted(nets.items(), key=lambda x: x[1]):
-        up = name.upper()
-        is_vdd = 1.0 if up in ("VDD", "VPWR", "VCC") else 0.0
-        is_vss = 1.0 if up in ("VSS", "VGND", "GND") else 0.0
-        is_top_pin = 1.0 if up in top_pin_set else 0.0
-        is_internal = 1.0 if (up not in top_pin_set and up not in rail_set) else 0.0
-        deg_norm = float(np.log1p(deg[nid]) / np.log1p(max_deg))
-        gate_norm = float(np.log1p(gate_deg[nid]) / np.log1p(max_gate_deg))
-        sd_norm = float(np.log1p(sd_deg[nid]) / np.log1p(max_sd_deg))
-        f_net.append([is_vdd, is_vss, is_top_pin, deg_norm, gate_norm, sd_norm, is_internal])
-    f_net = th.tensor(np.array(f_net, dtype=np.float32))
-
-    def mos_feats(list_dev):
-        arr = []
-        rail_set_local = {"VDD", "VPWR", "VCC", "VSS", "VGND", "GND"}
-        for d in list_dev:
-            raw_w = d["W"] if d.get("W") is not None else 2.0e-8
-            raw_l = d["L"] if d.get("L") is not None else 2.0e-8
-            nfin = d.get("nfin")
-            nf = d.get("nf")
-            m_mult = d.get("m")
-            nfin_eff = float(nfin if nfin is not None else (nf if nf is not None else 1.0))
-            nfin_eff = max(nfin_eff, 1.0)
-            m_eff = float(m_mult if m_mult is not None else 1.0)
-            m_eff = max(m_eff, 1.0)
-
-            wl_ratio = float(raw_w / max(raw_l, 1e-12))
-            area = float(raw_w * raw_l)
-
-            b = str(d.get("b", "")).upper()
-            s = str(d.get("s", "")).upper()
-            body_tied_source = 1.0 if b == s else 0.0
-            body_is_rail = 1.0 if b in rail_set_local else 0.0
-
-            arr.append(
-                [
-                    _safe_log10(raw_w),
-                    _safe_log10(raw_l),
-                    _safe_log10(wl_ratio),
-                    _safe_log10(area),
-                    _safe_log10(nfin_eff),
-                    _safe_log10(m_eff),
-                    body_tied_source,
-                    body_is_rail,
-                ]
-            )
-
-        if len(arr) == 0:
-            return th.zeros((0, GRAPH_MOS_DIM), dtype=th.float32)
-        return th.tensor(np.array(arr, dtype=np.float32))
-
-    f_p = mos_feats(p_devs)
-    f_n = mos_feats(n_devs)
-
-    feats = {"NET": f_net, "PMOS": f_p, "NMOS": f_n}
-    in_dim_map = {"NET": GRAPH_NET_DIM, "PMOS": GRAPH_MOS_DIM, "NMOS": GRAPH_MOS_DIM}
-    return g, feats, in_dim_map
+    return build_dgl_graph_from_devs_rich(devs, top_pins)
 
 
 def build_src_graph_cache(data_dir, meta, device):
@@ -561,6 +444,96 @@ def precompute_z_from_graph_cache(graph_cache, enc):
     return z_dict
 
 
+def _filter_compatible_state_dict(model, state_dict):
+    model_sd = model.state_dict()
+    keep = {}
+    dropped_shape = []
+    dropped_missing = []
+    for k, v in state_dict.items():
+        if k not in model_sd:
+            dropped_missing.append(k)
+            continue
+        if model_sd[k].shape != v.shape:
+            dropped_shape.append(k)
+            continue
+        keep[k] = v
+    return keep, dropped_missing, dropped_shape
+
+
+def _load_hgat_encoder_state_dict(enc, enc_state_dict):
+    """Load HGAT state dict with compatibility handling across script versions."""
+    norm_key_pat = re.compile(r"^layers\.(\d+)\.norm\.([A-Za-z0-9_]+)\.")
+    device = next(enc.parameters()).device
+
+    # Some older checkpoints contain node-type LN params that are missing in a fresh model.
+    for key in enc_state_dict.keys():
+        m = norm_key_pat.match(key)
+        if m is None:
+            continue
+        layer_idx = int(m.group(1))
+        node_type = m.group(2)
+        if layer_idx < 0 or layer_idx >= len(enc.layers):
+            continue
+        layer = enc.layers[layer_idx]
+        if node_type not in layer.norm:
+            layer.norm[node_type] = nn.LayerNorm(layer.hid).to(device)
+
+    filtered_sd, dropped_missing, dropped_shape = _filter_compatible_state_dict(enc, enc_state_dict)
+    if len(filtered_sd) == 0:
+        print("[Warn] HGAT checkpoint matched 0 parameters; skip loading encoder checkpoint.")
+        return False
+
+    load_res = enc.load_state_dict(filtered_sd, strict=False)
+    if dropped_missing:
+        print(f"[Warn] HGAT checkpoint keys not in model: {len(dropped_missing)}")
+    if dropped_shape:
+        print(f"[Warn] HGAT checkpoint keys shape-mismatch: {len(dropped_shape)}")
+    if load_res.missing_keys:
+        print(f"[Info] HGAT model missing keys after partial load: {len(load_res.missing_keys)}")
+    if load_res.unexpected_keys:
+        print(f"[Info] HGAT unexpected keys after partial load: {len(load_res.unexpected_keys)}")
+    print(f"[Info] Loaded HGAT encoder params: {len(filtered_sd)} tensors")
+    return True
+
+
+def maybe_load_hgat_encoder_checkpoint(enc, options, device):
+    """Optionally initialize HGAT encoder from external checkpoint."""
+    ckpt_path = getattr(options, "hgat_ckpt_path", None)
+    if ckpt_path is None or str(ckpt_path).strip() == "":
+        ckpt_path = getattr(options, "load_ckpt_path", None)
+    if ckpt_path is None or str(ckpt_path).strip() == "":
+        return False
+
+    ckpt_path = os.path.expanduser(str(ckpt_path))
+    if not os.path.isabs(ckpt_path):
+        ckpt_path = os.path.abspath(ckpt_path)
+    if not os.path.exists(ckpt_path):
+        print(f"[Warn] HGAT checkpoint not found: {ckpt_path}")
+        return False
+
+    ckpt = th.load(ckpt_path, map_location=device)
+    enc_state_dict = None
+    if isinstance(ckpt, dict) and "enc" in ckpt and isinstance(ckpt["enc"], dict):
+        enc_state_dict = ckpt["enc"]
+        src = "ckpt['enc']"
+    elif isinstance(ckpt, dict):
+        # Support plain state_dict formats.
+        if any(str(k).startswith("enc.") for k in ckpt.keys()):
+            enc_state_dict = {str(k)[4:]: v for k, v in ckpt.items() if str(k).startswith("enc.")}
+            src = "ckpt['enc.*']"
+        else:
+            enc_state_dict = ckpt
+            src = "ckpt(root)"
+    else:
+        print(f"[Warn] Unsupported HGAT checkpoint format: {type(ckpt)}")
+        return False
+
+    ok = _load_hgat_encoder_state_dict(enc, enc_state_dict)
+    if ok:
+        print(f"[Info] HGAT encoder initialized from {src}: {ckpt_path}")
+    return ok
+
+
 def report_graph_cache_coverage(name, graph_cache, cell_types):
     keys = set(str(k) for k in (graph_cache or {}).keys())
     cts = sorted(set(str(x) for x in cell_types))
@@ -588,6 +561,37 @@ def compute_src_loss_weight(epoch_idx, options):
     t = float(ep - start) / float(end - start)
     scale = 1.0 + (final_scale - 1.0) * t
     return base_w * scale
+
+
+def build_train_loss_fn(options):
+    loss_type = str(getattr(options, "train_loss_type", "mse")).strip().lower()
+    if loss_type in ("huber", "smooth_l1", "smoothl1"):
+        huber_delta = float(getattr(options, "huber_delta", 1.0))
+        print(f"[Info] Training loss: Huber(delta={huber_delta})")
+        return nn.HuberLoss(delta=huber_delta)
+    print("[Info] Training loss: MSE")
+    return nn.MSELoss()
+
+
+def build_scheduler(optimizer, options):
+    sched = str(getattr(options, "lr_scheduler", "none")).strip().lower()
+    if sched in ("cosine_wr", "cosine", "cosineannealingwarmrestarts"):
+        t0 = int(getattr(options, "cosine_t0", max(1, int(options.num_epoch) // 4)))
+        t_mult = int(getattr(options, "cosine_t_mult", 2))
+        eta_min = float(getattr(options, "cosine_eta_min", 1e-6))
+        t0 = max(1, t0)
+        t_mult = max(1, t_mult)
+        eta_min = max(0.0, eta_min)
+        scheduler = th.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer,
+            T_0=t0,
+            T_mult=t_mult,
+            eta_min=eta_min,
+        )
+        print(f"[Info] Scheduler: CosineAnnealingWarmRestarts(T_0={t0}, T_mult={t_mult}, eta_min={eta_min})")
+        return scheduler
+    print("[Info] Scheduler: none")
+    return None
 
 
 class SharedCalibRegressor(nn.Module):
@@ -751,6 +755,8 @@ def train_balanced_sep_mlp_shared_calib(options, seed):
         device
     )
 
+    maybe_load_hgat_encoder_checkpoint(enc, options, device)
+
     print("----------------Loading HGAT graphs----------------")
     z_dict_src = None
     z_dict_tgt = None
@@ -785,15 +791,24 @@ def train_balanced_sep_mlp_shared_calib(options, seed):
             weight_decay=options.weight_decay,
         )
 
-    loss_fn = nn.MSELoss()
+    loss_fn = build_train_loss_fn(options)
     r2_score = R2Score().to(device)
     scaler = th.cuda.amp.GradScaler(enabled=amp_on)
+    scheduler = build_scheduler(optimizer, options)
+
+    early_stop_patience = int(getattr(options, "early_stop_patience", 0))
+    early_stop_min_delta = max(0.0, float(getattr(options, "early_stop_min_delta", 0.0)))
+    if early_stop_patience > 0:
+        print(f"[Info] Early stop enabled: patience={early_stop_patience}, min_delta={early_stop_min_delta}")
+    else:
+        print("[Info] Early stop: disabled")
 
     print("----------------Start training---------------")
     best_val = float("-inf")
     best_epoch = -1
     best_val_loss = float("inf")
     best_ckpt_path = os.path.join(options.model_saving_dir, "ckpt_best.pt")
+    patience_counter = 0
 
     for epoch in range(options.num_epoch):
         if options.freeze_hgat:
@@ -873,6 +888,9 @@ def train_balanced_sep_mlp_shared_calib(options, seed):
 
         train_loss = total_loss / max(1, total_n)
         train_r2 = r2_score.compute().item() if total_n > 0 else 0.0
+        if scheduler is not None:
+            scheduler.step()
+        cur_lr = float(optimizer.param_groups[-1]["lr"])
 
         val_loss, val_r2 = validate_cell(
             val_dl,
@@ -888,13 +906,17 @@ def train_balanced_sep_mlp_shared_calib(options, seed):
 
         print(
             f"e{epoch}, train_loss:{train_loss:.4f}, r2:{train_r2:.3f}, "
-            f"val_loss:{val_loss:.4f}, val_r2:{val_r2:.3f}, src_w:{src_weight_epoch:.4f}"
+            f"val_loss:{val_loss:.4f}, val_r2:{val_r2:.3f}, lr:{cur_lr:.2e}, src_w:{src_weight_epoch:.4f}"
         )
 
-        if val_r2 > best_val:
+        delta_req = max(CKPT_R2_TIE_EPS_DEFAULT, early_stop_min_delta)
+        better_r2 = val_r2 > (best_val + delta_req)
+        tie_better = abs(val_r2 - best_val) <= delta_req and val_loss < best_val_loss
+        if better_r2 or tie_better:
             best_val = val_r2
             best_epoch = epoch + 1
             best_val_loss = val_loss
+            patience_counter = 0
             os.makedirs(options.model_saving_dir, exist_ok=True)
             th.save(
                 {
@@ -913,6 +935,12 @@ def train_balanced_sep_mlp_shared_calib(options, seed):
                 best_ckpt_path,
             )
             print("Model successfully saved")
+        else:
+            if early_stop_patience > 0:
+                patience_counter += 1
+                if patience_counter >= early_stop_patience:
+                    print(f"[EarlyStop] no improvement for {early_stop_patience} epochs; stop at epoch {epoch}")
+                    break
 
     if best_epoch > 0:
         print(

@@ -534,10 +534,14 @@ if __name__ == "__main__":
     np.random.seed(seed)
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
+    copilot_log_dir = os.path.join(os.getcwd(), "copilot_train_logs")
+    os.makedirs(copilot_log_dir, exist_ok=True)
+    script_stem = os.path.splitext(os.path.basename(__file__))[0]
+    copilot_log_f = os.path.join(copilot_log_dir, f"{script_stem}.log")
     stdout_f = '{}/stdout.log'.format(options.model_saving_dir)
     stderr_f = '{}/stderr.log'.format(options.model_saving_dir)
     os.makedirs(options.model_saving_dir, exist_ok=True)
-    with tee.StdoutTee(stdout_f), tee.StderrTee(stderr_f):
+    with tee.StdoutTee(stdout_f), tee.StderrTee(stderr_f), tee.StdoutTee(copilot_log_f), tee.StderrTee(copilot_log_f):
         train_balanced_cell(options, seed)
 
 import torch as th
@@ -1395,4 +1399,5 @@ if False:  # legacy layout/path training code (disabled)
                             parameters = options
                             pickle.dump((parameters, model, cnn), f)
                         print("Model successfully saved")
+
 
