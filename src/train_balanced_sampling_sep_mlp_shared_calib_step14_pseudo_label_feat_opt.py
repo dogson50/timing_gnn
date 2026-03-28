@@ -18,6 +18,7 @@ import dgl
 
 from options import get_options
 import tee
+from test_r2_report import run_train_and_report_test
 from hgat import HGATDesignEncoder
 from spi2graph import parse_top_subckt_pins
 
@@ -483,4 +484,4 @@ if __name__ == "__main__":
     stdout_f = os.path.join(options.model_saving_dir, "stdout.log")
     stderr_f = os.path.join(options.model_saving_dir, "stderr.log")
     with tee.StdoutTee(stdout_f), tee.StderrTee(stderr_f), tee.StdoutTee(copilot_log_f), tee.StderrTee(copilot_log_f):
-        train_step14(options, seed)
+        run_train_and_report_test(train_step14, options, seed, script_name=__file__)

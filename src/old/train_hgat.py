@@ -8,6 +8,7 @@ import pandas as pd
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
+import tee
 
 from model import DisentangledRegressor
 from hgat import HGATDesignEncoder, build_dgl_graph_from_devs
@@ -592,27 +593,34 @@ def main():
 
     device = torch.device(args.device)
     os.makedirs(args.save_dir, exist_ok=True)
+    stdout_f = os.path.join(args.save_dir, "stdout.log")
+    stderr_f = os.path.join(args.save_dir, "stderr.log")
+    copilot_log_dir = os.path.join(os.getcwd(), "copilot_train_logs")
+    os.makedirs(copilot_log_dir, exist_ok=True)
+    script_stem = os.path.splitext(os.path.basename(__file__))[0]
+    copilot_log_f = os.path.join(copilot_log_dir, f"{script_stem}.log")
 
-    print("[Info] Loading scalers...")
-    x_mean, x_std, y_mean, y_std, scaler_stats, y_scaler = load_scalers(args.data_dir)
+    with tee.StdoutTee(stdout_f), tee.StderrTee(stderr_f), tee.StdoutTee(copilot_log_f), tee.StderrTee(copilot_log_f):
+        print("[Info] Loading scalers...")
+        x_mean, x_std, y_mean, y_std, scaler_stats, y_scaler = load_scalers(args.data_dir)
 
-    current_ckpt = args.src_ckpt
+        current_ckpt = args.src_ckpt
 
-    if args.mode in ["pretrain", "all"]:
-        current_ckpt = run_stage1_pretraining(
-            args, device, x_mean, x_std, y_mean, y_std, scaler_stats, y_scaler
-        )
+        if args.mode in ["pretrain", "all"]:
+            current_ckpt = run_stage1_pretraining(
+                args, device, x_mean, x_std, y_mean, y_std, scaler_stats, y_scaler
+            )
 
-    if args.mode in ["transfer", "all"]:
-        if not current_ckpt or not os.path.exists(current_ckpt):
-            print("[Error] Missing stage1 ckpt for stage2.")
-            if args.mode == "transfer":
-                print("Please pass --src_ckpt")
-            return
+        if args.mode in ["transfer", "all"]:
+            if not current_ckpt or not os.path.exists(current_ckpt):
+                print("[Error] Missing stage1 ckpt for stage2.")
+                if args.mode == "transfer":
+                    print("Please pass --src_ckpt")
+                return
 
-        run_stage2_transfer(
-            args, device, current_ckpt, x_mean, x_std, y_mean, y_std, scaler_stats, y_scaler
-        )
+            run_stage2_transfer(
+                args, device, current_ckpt, x_mean, x_std, y_mean, y_std, scaler_stats, y_scaler
+            )
 
 
 if __name__ == "__main__":

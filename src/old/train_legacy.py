@@ -8,6 +8,7 @@ import re
 import numpy as np
 import torch as th
 import pandas as pd
+import tee
 
 from torch.utils.data import DataLoader, Dataset
 
@@ -1378,11 +1379,19 @@ def train_cell_delay(options):
 if __name__ == "__main__":
     options = get_options()
     _seed_everything(options.seed)
+    stdout_f = os.path.join(options.model_saving_dir, "stdout.log")
+    stderr_f = os.path.join(options.model_saving_dir, "stderr.log")
+    os.makedirs(options.model_saving_dir, exist_ok=True)
+    copilot_log_dir = os.path.join(os.getcwd(), "copilot_train_logs")
+    os.makedirs(copilot_log_dir, exist_ok=True)
+    script_stem = os.path.splitext(os.path.basename(__file__))[0]
+    copilot_log_f = os.path.join(copilot_log_dir, f"{script_stem}.log")
 
-    if options.mode == "cell_delay":
-        train_cell_delay(options)
-    else:
-        raise SystemExit(
-            "[error] Legacy '--mode path' training depends on verilog/layout/path data and was intentionally not wired for this workspace. "
-            "Use --mode cell_delay for lib+sp cell delay modeling."
-        )
+    with tee.StdoutTee(stdout_f), tee.StderrTee(stderr_f), tee.StdoutTee(copilot_log_f), tee.StderrTee(copilot_log_f):
+        if options.mode == "cell_delay":
+            train_cell_delay(options)
+        else:
+            raise SystemExit(
+                "[error] Legacy '--mode path' training depends on verilog/layout/path data and was intentionally not wired for this workspace. "
+                "Use --mode cell_delay for lib+sp cell delay modeling."
+            )

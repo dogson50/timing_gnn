@@ -1,0 +1,133 @@
+\documentclass[12pt,a4paper]{ctexart}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{xurl}
+
+\title{第三周组会：Shared-Calib 系列脚本优化与结果对比}
+\author{}
+\date{\today}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\Urlmuskip=0mu plus 1mu\relax
+
+\begin{document}
+\maketitle
+
+\section{汇报目标与数据来源}
+本次汇报基于 \path|copilot_train_logs| 目录下全部 11 份日志，围绕
+\path|train_balanced_sampling_sep_mlp_shared_calib.py| 主线及各 step 脚本进行对比分析。
+
+\subsection{关键基线}
+\begin{itemize}
+  \item 上一周最佳：\path|copilot_train_logs/train_balanced_sampling_sep_mlp_shared_calib_step5a_feat_opt.log|
+  \item 这一周最佳（并列）：\path|copilot_train_logs/train_balanced_sampling_sep_mlp_shared_calib_step13_pseudo_label_opt.log| 与 \path|copilot_train_logs/train_balanced_sampling_sep_mlp_shared_calib_step14_pseudo_label_feat_opt.log|
+\end{itemize}
+
+\subsection{日志全集（均已纳入统计）}
+\begin{itemize}
+  \item \path|train_balanced_sampling_sep_mlp_shared_calib.log|
+  \item \path|train_balanced_sampling_sep_mlp_shared_calib_step5a_feat_opt.log|
+  \item \path|train_balanced_sampling_sep_mlp_shared_calib_step7_two_stage_opt.log|
+  \item \path|train_balanced_sampling_sep_mlp_shared_calib_step8_arc_opt.log|
+  \item \path|train_balanced_sampling_sep_mlp_shared_calib_step8b_arc_residual_opt.log|
+  \item \path|train_balanced_sampling_sep_mlp_shared_calib_step9_anneal_opt.log|
+  \item \path|train_balanced_sampling_sep_mlp_shared_calib_step10_deeper_mlp_opt.log|
+  \item \path|train_balanced_sampling_sep_mlp_shared_calib_step11_cosine_lr_opt.log|
+  \item \path|train_balanced_sampling_sep_mlp_shared_calib_step12_huber_earlystop_opt.log|
+  \item \path|train_balanced_sampling_sep_mlp_shared_calib_step13_pseudo_label_opt.log|
+  \item \path|train_balanced_sampling_sep_mlp_shared_calib_step14_pseudo_label_feat_opt.log|
+\end{itemize}
+
+\section{各脚本相对 Shared-Calib 的改动（优化项）}
+\renewcommand{\arraystretch}{1.2}
+\begin{small}
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.30\textwidth}>{\raggedright\arraybackslash}p{0.64\textwidth}}
+\toprule
+脚本 & 相对 \texttt{shared\_calib} 的主要改动/优化 \\
+\midrule
+\endhead
+\path|step5a_feat_opt| &
+图构建由基础版升级为 rich 特征版：NET 特征从 4 维扩到 7 维（包含 gate/sd 度、internal 标记），MOS 特征从 2 维扩到 8 维（\(\log W,\log L,\log(W/L),\log(WL),\log nfin,\log m\)、体端约束特征），并在训练环节加入更稳健的源域损失聚合与 best checkpoint tie-break 规则。 \\
+
+\path|step7_two_stage_opt| &
+两阶段训练：Stage1 冻结 HGAT 仅训回归头（默认前 25\% epoch），Stage2 解冻 HGAT 联合训练；目的是先稳定回归头再细调编码器。 \\
+
+\path|step8_arc_opt| &
+引入 arc 条件建模（\texttt{from\_pin/to\_pin/pol} 嵌入），支持 \texttt{concat} 或 \texttt{FiLM} 融合，并可配置 target-only 或 src+tgt 词表。 \\
+
+\path|step8b_arc_residual_opt| &
+在 step8 基础上改为 residual arc 注入（小门控系数初始化），并在 freeze 情况下默认抑制 source arc 分支，目标是增强稳定性。 \\
+
+\path|step9_anneal_opt| &
+源域损失退火：训练前期保持较高源域权重，后期线性降至 \texttt{final\_scale}，提升 target-focused 收敛。 \\
+
+\path|step10_deeper_mlp_opt| &
+回归器从 2 层加深到 3 层并加入 residual + dropout，增强非线性表达能力。 \\
+
+\path|step11_cosine_lr_opt| &
+引入 \texttt{CosineAnnealingWarmRestarts} 学习率调度，减小后期振荡并改善收敛平滑性。 \\
+
+\path|step12_huber_earlystop_opt| &
+损失函数由 MSE 改为 Huber（抗异常值），并加入早停策略（patience/min\_delta）。 \\
+
+\path|step13_pseudo_label_opt| &
+引入伪标签自训练（多轮 round）：使用 69 个未标注 target 样本参与后续轮次训练。 \\
+
+\path|step14_pseudo_label_feat_opt| &
+在 step13 基础上加入高置信样本筛选（基于特征邻域距离）与伪标签损失权重控制（\texttt{pseudo\_loss\_weight}）。 \\
+\bottomrule
+\end{longtable}
+\end{small}
+
+\section{训练结果对比（来自日志最优点）}
+\subsection{统一统计口径}
+\begin{itemize}
+  \item 由于多个日志为追加写入（含历史 run），本次仅统计\textbf{最后一次运行}对应的总结记录（日志尾部的 \texttt{[Best]} / \texttt{[Global Best]} / \texttt{[Round k Best]}）。
+  \item 指标优先使用 \texttt{val\_r2}；并同时记录对应 \texttt{val\_loss}（step12 为 \texttt{val\_mse}）。
+  \item 以 \texttt{shared\_calib} 的最优 \(R^2=0.8741\) 作为 \(\Delta R^2\) 基准。
+\end{itemize}
+
+\subsection{结果总表（按 \(R^2\) 排序）}
+\begin{small}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.30\textwidth}>{\raggedright\arraybackslash}p{0.14\textwidth}p{0.08\textwidth}p{0.10\textwidth}p{0.12\textwidth}p{0.09\textwidth}@{}}
+\toprule
+日志文件 & 最优来源 & epoch & 最优 \(R^2\) & val\_loss & \(\Delta R^2\) \\
+\midrule
+\endhead
+\path|step13_pseudo_label_opt.log| & Global Best & 345 & 0.9028 & 0.098617 & +0.0287 \\
+\path|step14_pseudo_label_feat_opt.log| & Global Best & 345 & 0.9028 & 0.098649 & +0.0287 \\
+\path|step5a_feat_opt.log| & Best & 95 & 0.9015 & 0.100019 & +0.0274 \\
+\path|step9_anneal_opt.log| & Best & 95 & 0.9015 & 0.100019 & +0.0274 \\
+\path|step11_cosine_lr_opt.log| & Best & 98 & 0.8903 & 0.111379 & +0.0162 \\
+\path|step7_two_stage_opt.log| & Best & 66 & 0.8901 & 0.111586 & +0.0160 \\
+\path|step10_deeper_mlp_opt.log| & Best & 54 & 0.8848 & 0.116912 & +0.0107 \\
+\path|step12_huber_earlystop_opt.log| & Best & 93 & 0.8825 & 0.119232 & +0.0084 \\
+\path|shared_calib.log| & Best & 62 & 0.8741 & 0.127790 & +0.0000 \\
+\path|step8_arc_opt.log| & Best & 802 & 0.8619 & 0.140220 & -0.0122 \\
+\path|step8b_arc_residual_opt.log| & Best & 56 & 0.8224 & 0.180258 & -0.0517 \\
+\bottomrule
+\end{longtable}
+\end{small}
+
+\section{结论与下一步建议}
+\subsection{结论}
+\begin{enumerate}
+  \item \textbf{特征增强}（step5a\_feat）与 \textbf{源域损失退火}（step9）在当前口径下表现接近（均为 \(R^2=0.9015\)），相对基线提升 \(+0.0274\)。
+  \item \textbf{训练策略类优化}（two-stage、cosine、deeper-MLP、huber+earlystop）均有正增益，但幅度中等（约 \(+0.008\sim+0.016\)）。
+  \item \textbf{arc 条件建模}（step8/8b）在当前数据与设置下未带来收益，且明显低于基线。
+  \item step14 与 step13 基本持平（仅 loss 略有差异），说明“高置信筛选 + 权重”目前尚未转化为稳定增益。
+\end{enumerate}
+
+\subsection{下一步优化方向}
+\begin{enumerate}
+  \item 以 \texttt{step5a\_feat} 为统一主线，优先验证“\textbf{特征增强 + 源域退火}”联合方案（即 \texttt{step5a\_feat + step9} 组合），并固定按 cell\_type 划分口径。
+  \item 伪标签方向从“加样本量”切换到“控噪声”：分 cell\_type 设置信心阈值、分轮递增 \texttt{pseudo\_loss\_weight}，避免早期低质量伪标签主导训练。
+  \item 训练稳定性方向优先做轻量组合：在主线中叠加 \texttt{cosine lr + huber + early-stop}，目标是提升最优点附近的稳定性与可复现性，而不是单次峰值。
+  \item arc 方向暂缓大规模资源投入，仅保留小规模对照实验用于排查“词表覆盖与 pin 语义不匹配”问题。
+\end{enumerate}
+
+\end{document}

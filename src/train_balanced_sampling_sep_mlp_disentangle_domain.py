@@ -13,6 +13,7 @@ from torch.utils.data import Dataset as TorchDataset, DataLoader
 
 from options import get_options
 import tee
+from test_r2_report import run_train_and_report_test
 
 from hgat import HGATDesignEncoder, build_dgl_graph_from_devs, get_hgat_in_dim_map
 from spi2graph import parse_transistors_spice, parse_top_subckt_pins
@@ -627,5 +628,4 @@ if __name__ == "__main__":
     stderr_f = '{}/stderr.log'.format(options.model_saving_dir)
     os.makedirs(options.model_saving_dir, exist_ok=True)
     with tee.StdoutTee(stdout_f), tee.StderrTee(stderr_f), tee.StdoutTee(copilot_log_f), tee.StderrTee(copilot_log_f):
-        train_balanced_sep_mlp_disentangle_domain(options, seed)
-
+        run_train_and_report_test(train_balanced_sep_mlp_disentangle_domain, options, seed, script_name=__file__)

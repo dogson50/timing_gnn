@@ -17,6 +17,7 @@ from torch.utils.data import Dataset, DataLoader
 from options import get_options
 from hgat import HGATDesignEncoder, build_graph_from_spice_text, get_hgat_in_dim_map
 import tee
+from test_r2_report import run_train_and_report_test
 
 
 NUMERIC_COLS = [
@@ -548,8 +549,12 @@ if __name__ == "__main__":
     np.random.seed(seed)
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
+    copilot_log_dir = os.path.join(os.getcwd(), "copilot_train_logs")
+    os.makedirs(copilot_log_dir, exist_ok=True)
+    script_stem = os.path.splitext(os.path.basename(__file__))[0]
+    copilot_log_f = os.path.join(copilot_log_dir, f"{script_stem}.log")
     stdout_f = '{}/stdout.log'.format(options.model_saving_dir)
     stderr_f = '{}/stderr.log'.format(options.model_saving_dir)
     os.makedirs(options.model_saving_dir, exist_ok=True)
-    with tee.StdoutTee(stdout_f), tee.StderrTee(stderr_f):
-        train(options, seed)
+    with tee.StdoutTee(stdout_f), tee.StderrTee(stderr_f), tee.StdoutTee(copilot_log_f), tee.StderrTee(copilot_log_f):
+        run_train_and_report_test(train, options, seed, script_name=__file__)

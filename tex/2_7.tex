@@ -1,0 +1,73 @@
+﻿\documentclass{ctexart}
+\usepackage{geometry}
+\usepackage{listings}
+\geometry{a4paper, margin=1in}
+\lstset{basicstyle=\ttfamily\small, breaklines=true, frame=single}
+\title{2\_7 修改记录}
+\date{2026-02-07}
+\begin{document}
+\maketitle
+
+\section{train\_balanced\_sampling\_sep\_mlp.py 改为 HGAT + 双MLP(源/目标域)}
+\subsection{修改内容概述}
+\begin{itemize}
+  \item 删除旧的 Path/CNN 训练逻辑与相关辅助函数，仅保留 dataset.pkl + HGAT 的训练流程。
+  \item 新增数值特征规范化与 CellDelayDataset，直接读取 dataset.pkl 中的 DataFrame。
+  \item 使用 HGAT 编码 SPICE 图，加入 src/tgt 双 MLP head（分别用于源域/目标域）。
+  \item 训练入口改为 train\_balanced\_sep\_mlp，验证仅在目标域 val 上进行。
+\end{itemize}
+
+\subsection{修改前后对比（数据读取）}
+\textbf{修改前：} 设计图 pkl + path/CNN 数据
+\begin{lstlisting}
+train_dataset_7 = load_data(...)
+train_dataset_130 = load_data(...)
+val_dataset = load_data(...)
+\end{lstlisting}
+
+\textbf{修改后：} dataset.pkl 读取 df
+\begin{lstlisting}
+obj = load_dataset_pkl(data_dir, options.dataset_pkl_name)
+df_tgt_train = obj.get("tgt_train_df")
+df_src = obj.get("src_df")
+\end{lstlisting}
+
+\subsection{修改前后对比（模型/训练）}
+\textbf{修改前：} PathConv + CNN + PathModel
+\begin{lstlisting}
+cur_label_hats = model(graph, nodes, eids, targets, level_id, path_map)
+\end{lstlisting}
+
+\textbf{修改后：} HGAT + 双MLP回归（src/tgt）
+\begin{lstlisting}
+enc = HGATDesignEncoder(...)
+model = SepCellDelayRegressor(...)
+pred_tgt = model(xb_tgt, zb_tgt, node="tgt")
+pred_src = model(xb_src, zb_src, node="src")
+\end{lstlisting}
+
+\subsection{参数与训练入口调整}
+\textbf{修改前：}
+\begin{lstlisting}
+train(options, seed)
+\end{lstlisting}
+
+\textbf{修改后：}
+\begin{lstlisting}
+train_balanced_sep_mlp(options, seed)
+\end{lstlisting}
+
+\subsection{options.py 说明更新}
+\textbf{修改前：}
+\begin{lstlisting}
+--in_dim ... "the dimension of the input feature"
+--data_save_path ... "directory that contains the dataset"
+\end{lstlisting}
+
+\textbf{修改后：}
+\begin{lstlisting}
+--in_dim ... "must equal len(NUMERIC_COLS)=20"
+--data_save_path ... "directory containing dataset.pkl"
+\end{lstlisting}
+
+\end{document}

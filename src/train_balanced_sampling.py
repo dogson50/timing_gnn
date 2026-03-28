@@ -15,6 +15,7 @@ from torch.utils.data import Dataset, DataLoader
 from options import get_options
 from hgat import HGATDesignEncoder, build_graph_from_spice_text, get_hgat_in_dim_map
 import tee
+from test_r2_report import run_train_and_report_test
 
 NUMERIC_COLS = [
     "slew", "cap", "voltage", "temp",
@@ -542,8 +543,7 @@ if __name__ == "__main__":
     stderr_f = '{}/stderr.log'.format(options.model_saving_dir)
     os.makedirs(options.model_saving_dir, exist_ok=True)
     with tee.StdoutTee(stdout_f), tee.StderrTee(stderr_f), tee.StdoutTee(copilot_log_f), tee.StderrTee(copilot_log_f):
-        train_balanced_cell(options, seed)
-
+        run_train_and_report_test(train_balanced_cell, options, seed, script_name=__file__)
 import torch as th
 import random
 import os

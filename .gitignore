@@ -1,0 +1,59 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.venv/
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+*.swp
+*.swo
+copilot_train_logs/
+src/copilot_train_logs/
+log/
+
+# Training outputs / checkpoints
+PATH_MODEL/
+model/
+models/
+model_*/
+model*/
+src/model_*/
+src/model*/
+*.pt
+*.pth
+*.ckpt
+*.pkl
+
+# Generated data artifacts
+output/
+data/
+datasets/
+rawdata/
+rawdata-130/
+
+# LaTeX build artifacts (keep .tex/.bib)
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+
+# Temp scripts / accidental files
+tmp_parse_logs.py
+tmp_parse_logs2.py
+
+# Keep source code and docs
+!src/**/*.py
+!tex/**/*.tex
+!README.md

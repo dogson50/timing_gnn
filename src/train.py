@@ -15,6 +15,7 @@ from options import get_options
 from hgat import HGATDesignEncoder, build_dgl_graph_from_devs, get_hgat_in_dim_map
 from spi2graph import parse_transistors_spice, parse_top_subckt_pins
 import tee
+from test_r2_report import run_train_and_report_test
 
 NUMERIC_COLS = [
     "slew", "cap", "voltage", "temp",
@@ -521,5 +522,4 @@ if __name__ == "__main__":
     stderr_f = '{}/stderr.log'.format(options.model_saving_dir)
     os.makedirs(options.model_saving_dir, exist_ok=True)
     with tee.StdoutTee(stdout_f), tee.StderrTee(stderr_f), tee.StdoutTee(copilot_log_f), tee.StderrTee(copilot_log_f):
-        train(options, seed)
-
+        run_train_and_report_test(train, options, seed, script_name=__file__)

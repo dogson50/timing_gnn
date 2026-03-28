@@ -308,6 +308,156 @@ def build_dgl_graph_from_devs(devs, top_pins, passives=None):
     return g, feats, get_hgat_in_dim_map()
 
 
+def build_dgl_graph_from_devs_rich(devs, top_pins):
+    """Compatibility helper for step5a/step13/step14 rich-feature experiments.
+
+    NET features: 7 dims
+    MOS features: 8 dims
+    """
+    nets = {}
+
+    def net_id(name):
+        if name not in nets:
+            nets[name] = len(nets)
+        return nets[name]
+
+    p_devs = []
+    n_devs = []
+    gate_src_p, gate_dst_p = [], []
+    gate_src_n, gate_dst_n = [], []
+    sd_src_p, sd_dst_p = [], []
+    sd_src_n, sd_dst_n = [], []
+
+    for d in devs:
+        dev_type = str(d.get("type", "")).lower()
+        if dev_type.startswith("p"):
+            idx = len(p_devs)
+            p_devs.append(d)
+            gate_src_p.append(net_id(d["g"]))
+            gate_dst_p.append(idx)
+            sd_src_p.extend([idx, idx])
+            sd_dst_p.extend([net_id(d["s"]), net_id(d["d"])])
+        elif dev_type.startswith("n"):
+            idx = len(n_devs)
+            n_devs.append(d)
+            gate_src_n.append(net_id(d["g"]))
+            gate_dst_n.append(idx)
+            sd_src_n.extend([idx, idx])
+            sd_dst_n.extend([net_id(d["s"]), net_id(d["d"])])
+
+    p_count, n_count = len(p_devs), len(n_devs)
+    data_dict = {}
+    if p_count > 0:
+        data_dict[("NET", "gate_of", "PMOS")] = (
+            torch.tensor(gate_src_p, dtype=torch.int64),
+            torch.tensor(gate_dst_p, dtype=torch.int64),
+        )
+        data_dict[("PMOS", "sd_to", "NET")] = (
+            torch.tensor(sd_src_p, dtype=torch.int64),
+            torch.tensor(sd_dst_p, dtype=torch.int64),
+        )
+        data_dict[("NET", "back_sd", "PMOS")] = (
+            torch.tensor(sd_dst_p, dtype=torch.int64),
+            torch.tensor(sd_src_p, dtype=torch.int64),
+        )
+    if n_count > 0:
+        data_dict[("NET", "gate_of", "NMOS")] = (
+            torch.tensor(gate_src_n, dtype=torch.int64),
+            torch.tensor(gate_dst_n, dtype=torch.int64),
+        )
+        data_dict[("NMOS", "sd_to", "NET")] = (
+            torch.tensor(sd_src_n, dtype=torch.int64),
+            torch.tensor(sd_dst_n, dtype=torch.int64),
+        )
+        data_dict[("NET", "back_sd", "NMOS")] = (
+            torch.tensor(sd_dst_n, dtype=torch.int64),
+            torch.tensor(sd_src_n, dtype=torch.int64),
+        )
+
+    g = dgl.heterograph(
+        data_dict,
+        num_nodes_dict={"NET": len(nets), "PMOS": p_count, "NMOS": n_count},
+    )
+
+    gate_deg = np.zeros(len(nets), dtype=np.float32)
+    sd_deg = np.zeros(len(nets), dtype=np.float32)
+    for nid in gate_src_p + gate_src_n:
+        gate_deg[int(nid)] += 1.0
+    for nid in sd_dst_p + sd_dst_n:
+        sd_deg[int(nid)] += 1.0
+    deg = gate_deg + sd_deg
+
+    max_deg = float(max(1.0, deg.max() if deg.size > 0 else 1.0))
+    max_gate_deg = float(max(1.0, gate_deg.max() if gate_deg.size > 0 else 1.0))
+    max_sd_deg = float(max(1.0, sd_deg.max() if sd_deg.size > 0 else 1.0))
+
+    top_pin_set = {str(p).upper() for p in (top_pins or [])}
+    rail_set = {"VDD", "VPWR", "VCC", "VSS", "VGND", "GND"}
+    f_net = []
+    for name, nid in sorted(nets.items(), key=lambda kv: kv[1]):
+        up = str(name).upper()
+        is_vdd = 1.0 if up in ("VDD", "VPWR", "VCC") else 0.0
+        is_vss = 1.0 if up in ("VSS", "VGND", "GND") else 0.0
+        is_top_pin = 1.0 if up in top_pin_set else 0.0
+        is_internal = 1.0 if (up not in top_pin_set and up not in rail_set) else 0.0
+        deg_norm = float(np.log1p(deg[nid]) / np.log1p(max_deg))
+        gate_norm = float(np.log1p(gate_deg[nid]) / np.log1p(max_gate_deg))
+        sd_norm = float(np.log1p(sd_deg[nid]) / np.log1p(max_sd_deg))
+        f_net.append([is_vdd, is_vss, is_top_pin, deg_norm, gate_norm, sd_norm, is_internal])
+    if f_net:
+        f_net = torch.tensor(np.array(f_net, dtype=np.float32))
+    else:
+        f_net = torch.zeros((0, 7), dtype=torch.float32)
+
+    def safe_log10(v, eps=1e-12):
+        return float(np.log10(max(float(v), eps)))
+
+    def mos_feats(dev_list):
+        arr = []
+        rail_set_local = {"VDD", "VPWR", "VCC", "VSS", "VGND", "GND"}
+        for d in dev_list:
+            raw_w = float(d.get("W")) if d.get("W") is not None else 2.0e-8
+            raw_l = float(d.get("L")) if d.get("L") is not None else 2.0e-8
+            nfin = d.get("nfin")
+            nf = d.get("nf")
+            m_mult = d.get("m")
+            nfin_eff = float(nfin if nfin is not None else (nf if nf is not None else 1.0))
+            nfin_eff = max(nfin_eff, 1.0)
+            m_eff = float(m_mult if m_mult is not None else 1.0)
+            m_eff = max(m_eff, 1.0)
+
+            wl_ratio = raw_w / max(raw_l, 1e-12)
+            area = raw_w * raw_l
+
+            b = str(d.get("b", "")).upper()
+            s = str(d.get("s", "")).upper()
+            body_tied_source = 1.0 if b == s else 0.0
+            body_is_rail = 1.0 if b in rail_set_local else 0.0
+
+            arr.append(
+                [
+                    safe_log10(raw_w),
+                    safe_log10(raw_l),
+                    safe_log10(wl_ratio),
+                    safe_log10(area),
+                    safe_log10(nfin_eff),
+                    safe_log10(m_eff),
+                    body_tied_source,
+                    body_is_rail,
+                ]
+            )
+
+        if not arr:
+            return torch.zeros((0, 8), dtype=torch.float32)
+        return torch.tensor(np.array(arr, dtype=np.float32))
+
+    f_p = mos_feats(p_devs)
+    f_n = mos_feats(n_devs)
+    feats = {"NET": f_net, "PMOS": f_p, "NMOS": f_n}
+    in_dim_map = {"NET": 7, "PMOS": 8, "NMOS": 8}
+    return g, feats, in_dim_map
+
+
 def build_graph_from_spice(spi_path):
     text = open(spi_path, "r", encoding="utf-8", errors="ignore").read()
     return build_graph_from_spice_text(text)

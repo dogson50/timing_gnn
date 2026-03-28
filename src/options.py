@@ -163,11 +163,11 @@ def get_options(args=None):
                         help="ASAP7 SP root dir or file (for build_dataset)")
     parser.add_argument("--out_dir", type=str, default="../output",
                         help="Output dir for build_dataset")
-    parser.add_argument("--target_label_ratio", type=float, default=0.9,
+    parser.add_argument("--target_label_ratio", type=float, default=1,
                         help="Ratio of labeled data in target train pool (for build_dataset)")
     parser.add_argument("--tgt_split_ratios", type=float, nargs=3, default=[0.14, 0.14, 0.72],
                         help="Target split ratios for train/val/test (for build_dataset)")
-    parser.add_argument("--tgt_split_mode", type=str, default="random",
+    parser.add_argument("--tgt_split_mode", type=str, default="cell_type",
                         choices=["cell_type", "random", "stratified", "table_group"],
                         help="Target split mode: cell_type | random | stratified | table_group")
     parser.add_argument("--split_seed", type=int, default=42,

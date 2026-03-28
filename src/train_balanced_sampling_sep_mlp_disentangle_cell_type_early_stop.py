@@ -7,6 +7,7 @@ from torchmetrics import R2Score
 from torch.utils.data import DataLoader
 
 import tee
+from test_r2_report import run_train_and_report_test
 from options import get_options
 from train_balanced_sampling_sep_mlp_disentangle_cell_type import (
     NUMERIC_COLS,
@@ -476,4 +477,4 @@ if __name__ == "__main__":
     stderr_f = "{}/stderr.log".format(options.model_saving_dir)
     os.makedirs(options.model_saving_dir, exist_ok=True)
     with tee.StdoutTee(stdout_f), tee.StderrTee(stderr_f):
-        train_balanced_sep_mlp_disentangle_cell_type_early_stop(options, seed)
+        run_train_and_report_test(train_balanced_sep_mlp_disentangle_cell_type_early_stop, options, seed, script_name=__file__)
