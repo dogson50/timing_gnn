@@ -50,6 +50,47 @@
   `copilot_train_logs/train_balanced_sampling_sep_mlp_shared_calib_step13_pseudo_label_opt.log`、
   `model_step13_pseudo_label/stdout.log`、`model_step13_pseudo_label/stderr.log`。
 
+## 新上传脚本（伪标签系列）
+
+### `step13_pseudo_label_opt`
+
+脚本：
+
+    src/train_balanced_sampling_sep_mlp_shared_calib_step13_pseudo_label_opt.py
+
+做什么：
+
+- 3 轮自训练（self-training），每轮都在验证集上选 best ckpt。
+- 把 69 个未标注 target 全量打伪标签，加入下一轮训练。
+- 第 2/3 轮从上一轮 best ckpt warm-start。
+
+运行指令：
+
+    /home/xiaojun/anaconda3/bin/conda run -p /home/xiaojun/anaconda3/envs/gnn_timing1 --no-capture-output \
+    python /mnt/d/python_timing_gnn/timing_1_31/Timing-Pred-Code/src/train_balanced_sampling_sep_mlp_shared_calib_step13_pseudo_label_opt.py \
+    --freeze_hgat --dedup_z --num_epoch 1000 --learning_rate 1e-3 --batch_size 1350 \
+    --model_saving_dir model_step13_pseudo_label --data_save_path output --dataset_pkl_name dataset.pkl
+
+### `step14_pseudo_label_feat_opt`
+
+脚本：
+
+    src/train_balanced_sampling_sep_mlp_shared_calib_step14_pseudo_label_feat_opt.py
+
+做什么：
+
+- 基于 `step5a_feat` 主干做多轮伪标签训练（默认 3 轮）。
+- 先对未标注样本预测，再按“与已标注 target 的特征空间最近邻距离”筛选高置信伪标签。
+- 支持伪标签损失权重（`--pseudo_loss_weight`）与筛选比例（`--pseudo_keep_ratio` / `--pseudo_min_keep`）。
+
+运行指令：
+
+    /home/xiaojun/anaconda3/bin/conda run -p /home/xiaojun/anaconda3/envs/gnn_timing1 --no-capture-output \
+    python /mnt/d/python_timing_gnn/timing_1_31/Timing-Pred-Code/src/train_balanced_sampling_sep_mlp_shared_calib_step14_pseudo_label_feat_opt.py \
+    --freeze_hgat --dedup_z --num_epoch 1000 --learning_rate 1e-3 --batch_size 1350 \
+    --pseudo_num_rounds 3 --pseudo_keep_ratio 0.7 --pseudo_min_keep 16 --pseudo_loss_weight 1.0 \
+    --model_saving_dir model_step14_pseudo_label_feat --data_save_path output --dataset_pkl_name dataset.pkl
+
 ## 训练（HGAT + MLP 回归）
 进入目录 './src'，执行：
 
