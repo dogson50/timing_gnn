@@ -219,3 +219,21 @@ Arc-condition options (for sep_mlp baseline):
 | train_balanced_sampling_sep_mlp_shared_calib.py | 共享主干 + 校正头 + 源/目标平衡采样 | 域校正分支 |
 | train_balanced_sampling_sep_mlp_disentangle_cell_type.py | 双头 + 按 cell_type 解耦 | 解耦损失（cell_type） |
 | train_balanced_sampling_sep_mlp_disentangle_domain.py | 双头 + 按 domain 解耦 | 解耦损失（domain） |
+
+## Step5a_feat Generalization Run (cell_type split)
+
+Recommended command (no script modification required):
+
+    /home/xiaojun/anaconda3/bin/conda run -p /home/xiaojun/anaconda3/envs/gnn_timing1 --no-capture-output \
+    python /mnt/d/python_timing_gnn/timing_1_31/Timing-Pred-Code/src/train_balanced_sampling_sep_mlp_shared_calib_step5a_feat_opt.py \
+    --model_saving_dir model_sep_hgat_step5a_feat_genA --data_save_path output --dataset_pkl_name dataset.pkl \
+    --task reg --gpu 0 --seed 9294 --num_epoch 400 \
+    --learning_rate 8e-4 --enc_lr_scale 0.05 --weight_decay 2e-5 --mlp_dropout 0.15 \
+    --hgat_l2_norm --z_noise_std 0.01 \
+    --src_loss_anneal_start 80 --src_loss_anneal_end 280 --src_loss_final_scale 0.8 \
+    --lr_scheduler cosine_wr --cosine_t0 30 --cosine_t_mult 1 --cosine_eta_min 1e-5 \
+    --early_stop_patience 40 --early_stop_min_delta 5e-4 --test_eval_interval 20
+
+Notes:
+- This setup focuses on reducing val-test gap under cell_type split.
+- Keep periodic test evaluation every 20 epochs and compare the best `eval@e*` test R2 in log.
