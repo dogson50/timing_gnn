@@ -5,6 +5,8 @@ def get_options(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--learning_rate", type=float, help='the learning rate for training. Type: float.',
                         default=1e-3)
+    parser.add_argument("--enc_lr_scale", type=float, default=0.2,
+                        help='encoder LR scale w.r.t. learning_rate when encoder is trainable')
     parser.add_argument("--batch_size", type=int, help='the number of samples in each training batch. Type: int',
                         default=1350)
     parser.add_argument("--num_epoch", type=int,
@@ -26,6 +28,8 @@ def get_options(args=None):
                         help="use learned node-type attention when fusing HGAT type summaries")
     parser.add_argument("--hgat_l2_norm", action="store_true",
                         help="apply L2 normalization on the final HGAT embedding")
+    parser.add_argument("--z_noise_std", type=float, default=0.0,
+                        help="std of Gaussian noise added to HGAT z during training only")
     parser.add_argument("--use_arc_cond", action="store_true",
                         help="enable arc conditioning in MLP heads using from_pin/to_pin/pol embeddings")
     parser.add_argument("--pin_emb_dim", type=int, default=8,
@@ -49,6 +53,8 @@ def get_options(args=None):
     # HGAT runtime controls (shared across training scripts)
     parser.add_argument("--freeze_hgat", action="store_true",
                         help="freeze HGAT encoder and precompute z (train MLP only)")
+    parser.add_argument("--enc_update_interval", type=int, default=1,
+                        help="when HGAT is trainable, update encoder every N target batches (N>1 speeds up training)")
     parser.add_argument("--dedup_z", action="store_true",
                         help="deduplicate cell_type within batch when building z")
     parser.add_argument("--pretrain_epochs", type=int, default=0,
@@ -118,6 +124,33 @@ def get_options(args=None):
                         help='early stop patience on val_r2 (0 disables early stop)')
     parser.add_argument('--early_stop_min_delta', type=float, default=0.0,
                         help='minimum val_r2 improvement to reset early-stop counter')
+    parser.add_argument('--lr_scheduler', type=str, default='none',
+                        choices=['none', 'cosine_wr', 'cosine', 'cosineannealingwarmrestarts', 'plateau', 'reduce_on_plateau'],
+                        help='learning-rate scheduler type')
+    parser.add_argument('--cosine_t0', type=int, default=0,
+                        help='T_0 for cosine warm restarts; <=0 means auto (num_epoch//4)')
+    parser.add_argument('--cosine_t_mult', type=int, default=2,
+                        help='T_mult for cosine warm restarts')
+    parser.add_argument('--cosine_eta_min', type=float, default=1e-6,
+                        help='minimum LR for cosine warm restarts')
+    parser.add_argument('--plateau_factor', type=float, default=0.5,
+                        help='LR decay factor for ReduceLROnPlateau')
+    parser.add_argument('--plateau_patience', type=int, default=5,
+                        help='patience (eval rounds) for ReduceLROnPlateau')
+    parser.add_argument('--plateau_threshold', type=float, default=1e-4,
+                        help='minimum metric change to qualify as improvement for ReduceLROnPlateau')
+    parser.add_argument('--plateau_min_lr', type=float, default=1e-6,
+                        help='minimum LR for ReduceLROnPlateau')
+    parser.add_argument('--num_workers', type=int, default=4,
+                        help='DataLoader worker processes')
+    parser.add_argument('--prefetch_factor', type=int, default=2,
+                        help='DataLoader prefetch factor (effective only when num_workers > 0)')
+    parser.add_argument('--persistent_workers', type=int, default=1,
+                        help='DataLoader persistent workers flag (1 enable, 0 disable)')
+    parser.add_argument('--val_eval_interval', type=int, default=1,
+                        help='run validation every N epochs')
+    parser.add_argument('--test_eval_interval', type=int, default=50,
+                        help='run test evaluation every N epochs')
     # disentangle and alignment
     parser.add_argument('--node_feat_dim', type=int, default=128)
     parser.add_argument('--con_temp', type=float, default=1.0)
@@ -167,7 +200,7 @@ def get_options(args=None):
                         help="Ratio of labeled data in target train pool (for build_dataset)")
     parser.add_argument("--tgt_split_ratios", type=float, nargs=3, default=[0.14, 0.14, 0.72],
                         help="Target split ratios for train/val/test (for build_dataset)")
-    parser.add_argument("--tgt_split_mode", type=str, default="cell_type",
+    parser.add_argument("--tgt_split_mode", type=str, default="random",
                         choices=["cell_type", "random", "stratified", "table_group"],
                         help="Target split mode: cell_type | random | stratified | table_group")
     parser.add_argument("--split_seed", type=int, default=42,

@@ -222,18 +222,21 @@ Arc-condition options (for sep_mlp baseline):
 
 ## Step5a_feat Generalization Run (cell_type split)
 
-Recommended command (no script modification required):
+Recommended fast-unfreeze command:
 
     /home/xiaojun/anaconda3/bin/conda run -p /home/xiaojun/anaconda3/envs/gnn_timing1 --no-capture-output \
     python /mnt/d/python_timing_gnn/timing_1_31/Timing-Pred-Code/src/train_balanced_sampling_sep_mlp_shared_calib_step5a_feat_opt.py \
-    --model_saving_dir model_sep_hgat_step5a_feat_genA --data_save_path output --dataset_pkl_name dataset.pkl \
-    --task reg --gpu 0 --seed 9294 --num_epoch 400 \
-    --learning_rate 8e-4 --enc_lr_scale 0.05 --weight_decay 2e-5 --mlp_dropout 0.15 \
-    --hgat_l2_norm --z_noise_std 0.01 \
-    --src_loss_anneal_start 80 --src_loss_anneal_end 280 --src_loss_final_scale 0.8 \
-    --lr_scheduler cosine_wr --cosine_t0 30 --cosine_t_mult 1 --cosine_eta_min 1e-5 \
-    --early_stop_patience 40 --early_stop_min_delta 5e-4 --test_eval_interval 20
+    --model_saving_dir model_sep_hgat_step5a_feat_unfreeze_fast_est --data_save_path output --dataset_pkl_name dataset.pkl \
+    --task reg --gpu 0 --seed 9294 --num_epoch 160 \
+    --learning_rate 8e-4 --enc_lr_scale 0.15 --weight_decay 1e-5 --mlp_dropout 0.1 \
+    --src_loss_anneal_start 80 --src_loss_anneal_end 220 --src_loss_final_scale 0.85 \
+    --lr_scheduler reduce_on_plateau --plateau_factor 0.6 --plateau_patience 4 --plateau_threshold 3e-4 --plateau_min_lr 1e-6 \
+    --early_stop_patience 18 --early_stop_min_delta 3e-4 \
+    --enc_update_interval 4 \
+    --num_workers 4 --prefetch_factor 4 \
+    --val_eval_interval 1 --test_eval_interval 50
 
 Notes:
-- This setup focuses on reducing val-test gap under cell_type split.
-- Keep periodic test evaluation every 20 epochs and compare the best `eval@e*` test R2 in log.
+- `--enc_update_interval 4` updates HGAT every 4 target batches, which speeds up unfrozen training.
+- Use this as a quick estimate run; if promising, rerun with `--enc_update_interval 2` for stronger final quality.
+- Reduce `--test_eval_interval` (for example to 20) only when denser test snapshots are needed.
