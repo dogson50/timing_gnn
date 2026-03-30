@@ -42,6 +42,24 @@ def _net_alias(name: str):
     return up
 
 
+def _build_graph_meta(nets, top_pins):
+    """Build lightweight graph metadata for arc-aware net focus."""
+    top_pin_set = {str(p).upper() for p in (top_pins or [])}
+    net_name_to_id = {}
+    pin_to_net_id = {}
+    for name, nid in sorted(nets.items(), key=lambda x: x[1]):
+        up = str(name).upper()
+        if up not in net_name_to_id:
+            net_name_to_id[up] = int(nid)
+        if up in top_pin_set and up not in pin_to_net_id:
+            pin_to_net_id[up] = int(nid)
+    return {
+        "net_name_to_id": net_name_to_id,
+        "pin_to_net_id": pin_to_net_id,
+        "num_nets": int(len(nets)),
+    }
+
+
 class HGATBlock(nn.Module):
     def __init__(self, hid, rels, num_heads=1, dropout=0.1):
         super().__init__()
@@ -106,12 +124,18 @@ class HGATDesignEncoder(nn.Module):
             nn.Linear(out, out),
         )
 
-    def _summarize_hidden(self, h):
+    def _summarize_hidden(self, h, net_focus=None):
         summaries = []
         ntypes = ["PMOS", "NMOS"] + (["NET"] if self.use_net_readout else [])
         for nt in ntypes:
             if nt in h and h[nt].shape[0] > 0:
                 x = h[nt]
+                # Optional arc-aware NET focus: summarize only selected NET nodes.
+                if nt == "NET" and net_focus is not None:
+                    if net_focus.dim() == 1 and net_focus.numel() == x.shape[0]:
+                        mask = net_focus > 0
+                        if bool(mask.any()):
+                            x = x[mask]
                 mean_v = x.mean(dim=0, keepdim=True)
                 max_v = x.max(dim=0, keepdim=True).values
                 std_v = x.std(dim=0, keepdim=True, unbiased=False)
@@ -131,18 +155,18 @@ class HGATDesignEncoder(nn.Module):
             z = s.mean(dim=0)
         return z
 
-    def forward(self, g, feats):
+    def forward(self, g, feats, net_focus=None):
         h = {nt: self.embed[nt](feats[nt]) for nt in feats}
         for layer in self.layers:
             h = layer(g, h)
-        z = self._summarize_hidden(h)
+        z = self._summarize_hidden(h, net_focus=net_focus)
         z = self.readout(z)
         if self.l2_norm:
             z = F.normalize(z, dim=0)
         return z
 
 
-def build_dgl_graph_from_devs(devs, top_pins, passives=None):
+def build_dgl_graph_from_devs(devs, top_pins, passives=None, return_meta=False):
     passives = passives or []
     nets = {}
 
@@ -305,15 +329,18 @@ def build_dgl_graph_from_devs(devs, top_pins, passives=None):
     f_p = mos_feats(p_devs)
     f_n = mos_feats(n_devs)
     feats = {"NET": f_net, "PMOS": f_p, "NMOS": f_n}
+    if return_meta:
+        return g, feats, get_hgat_in_dim_map(), _build_graph_meta(nets, top_pins)
     return g, feats, get_hgat_in_dim_map()
 
 
-def build_dgl_graph_from_devs_rich(devs, top_pins):
+def build_dgl_graph_from_devs_rich(devs, top_pins, passives=None, return_meta=False):
     """Compatibility helper for step5a/step13/step14 rich-feature experiments.
 
     NET features: 7 dims
     MOS features: 8 dims
     """
+    passives = passives or []
     nets = {}
 
     def net_id(name):
@@ -346,6 +373,20 @@ def build_dgl_graph_from_devs_rich(devs, top_pins):
             sd_dst_n.extend([net_id(d["s"]), net_id(d["d"])])
 
     p_count, n_count = len(p_devs), len(n_devs)
+    res_src, res_dst = [], []
+    cap_src, cap_dst = [], []
+    for elem in passives:
+        n1 = net_id(elem["n1"])
+        n2 = net_id(elem["n2"])
+        if n1 == n2:
+            continue
+        kind = str(elem.get("kind", "")).lower()
+        if kind == "res":
+            res_src.extend([n1, n2])
+            res_dst.extend([n2, n1])
+        elif kind == "cap":
+            cap_src.extend([n1, n2])
+            cap_dst.extend([n2, n1])
     data_dict = {}
     if p_count > 0:
         data_dict[("NET", "gate_of", "PMOS")] = (
@@ -373,6 +414,16 @@ def build_dgl_graph_from_devs_rich(devs, top_pins):
             torch.tensor(sd_dst_n, dtype=torch.int64),
             torch.tensor(sd_src_n, dtype=torch.int64),
         )
+    if res_src:
+        data_dict[("NET", "res_to", "NET")] = (
+            torch.tensor(res_src, dtype=torch.int64),
+            torch.tensor(res_dst, dtype=torch.int64),
+        )
+    if cap_src:
+        data_dict[("NET", "cap_to", "NET")] = (
+            torch.tensor(cap_src, dtype=torch.int64),
+            torch.tensor(cap_dst, dtype=torch.int64),
+        )
 
     g = dgl.heterograph(
         data_dict,
@@ -385,7 +436,15 @@ def build_dgl_graph_from_devs_rich(devs, top_pins):
         gate_deg[int(nid)] += 1.0
     for nid in sd_dst_p + sd_dst_n:
         sd_deg[int(nid)] += 1.0
-    deg = gate_deg + sd_deg
+    par_deg = np.zeros(len(nets), dtype=np.float32)
+    for elem in passives:
+        n1 = nets.get(elem["n1"])
+        n2 = nets.get(elem["n2"])
+        if n1 is None or n2 is None:
+            continue
+        par_deg[n1] += 1.0
+        par_deg[n2] += 1.0
+    deg = gate_deg + sd_deg + par_deg
 
     max_deg = float(max(1.0, deg.max() if deg.size > 0 else 1.0))
     max_gate_deg = float(max(1.0, gate_deg.max() if gate_deg.size > 0 else 1.0))
@@ -455,6 +514,8 @@ def build_dgl_graph_from_devs_rich(devs, top_pins):
     f_n = mos_feats(n_devs)
     feats = {"NET": f_net, "PMOS": f_p, "NMOS": f_n}
     in_dim_map = {"NET": 7, "PMOS": 8, "NMOS": 8}
+    if return_meta:
+        return g, feats, in_dim_map, _build_graph_meta(nets, top_pins)
     return g, feats, in_dim_map
 
 
@@ -463,19 +524,19 @@ def build_graph_from_spice(spi_path):
     return build_graph_from_spice_text(text)
 
 
-def build_graph_from_spice_text(sp_text, root_subckt=None):
+def build_graph_from_spice_text(sp_text, root_subckt=None, return_meta=False):
     if root_subckt:
         devs, passives, pins = flatten_subckt_hierarchy(sp_text, root_subckt)
         if devs or passives:
-            return build_dgl_graph_from_devs(devs, pins, passives=passives)
+            return build_dgl_graph_from_devs(devs, pins, passives=passives, return_meta=return_meta)
         sub_text = extract_subckt_with_dependencies(sp_text, root_subckt)
         if sub_text:
             devs = parse_transistors_spice(sub_text)
             passives = parse_passive_parasitics_spice(sub_text)
             _, pins = parse_top_subckt_pins(sub_text)
-            return build_dgl_graph_from_devs(devs, pins, passives=passives)
-        return build_dgl_graph_from_devs([], [], passives=[])
+            return build_dgl_graph_from_devs(devs, pins, passives=passives, return_meta=return_meta)
+        return build_dgl_graph_from_devs([], [], passives=[], return_meta=return_meta)
     devs = parse_transistors_spice(sp_text)
     passives = parse_passive_parasitics_spice(sp_text)
     _, pins = parse_top_subckt_pins(sp_text)
-    return build_dgl_graph_from_devs(devs, pins, passives=passives)
+    return build_dgl_graph_from_devs(devs, pins, passives=passives, return_meta=return_meta)
