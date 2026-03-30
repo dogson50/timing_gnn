@@ -240,3 +240,17 @@ Notes:
 - `--enc_update_interval 4` updates HGAT every 4 target batches, which speeds up unfrozen training.
 - Use this as a quick estimate run; if promising, rerun with `--enc_update_interval 2` for stronger final quality.
 - Reduce `--test_eval_interval` (for example to 20) only when denser test snapshots are needed.
+
+Recommended freeze-fast command (better stability / easy reproduction):
+
+    /home/xiaojun/anaconda3/bin/conda run -p /home/xiaojun/anaconda3/envs/gnn_timing1 --no-capture-output \
+    python /mnt/d/python_timing_gnn/timing_1_31/Timing-Pred-Code/src/train_balanced_sampling_sep_mlp_shared_calib_step5a_feat_opt.py \
+    --model_saving_dir model_sep_hgat_step4a_sched_lr_opt --data_save_path output --dataset_pkl_name dataset.pkl \
+    --gpu 0 --seed 9294 --freeze_hgat \
+    --num_epoch 260 --batch_size 3072 \
+    --learning_rate 3e-3 --enc_lr_scale 0.05 --weight_decay 2e-5 --mlp_dropout 0.15 \
+    --hgat_l2_norm --z_noise_std 0.01 \
+    --src_loss_anneal_start 80 --src_loss_anneal_end 280 --src_loss_final_scale 0.8 \
+    --lr_scheduler plateau --plateau_factor 0.5 --plateau_patience 3 --plateau_threshold 3e-4 --plateau_min_lr 1e-6 \
+    --early_stop_patience 10 --early_stop_min_delta 8e-4 \
+    --num_workers 0 --val_eval_interval 5 --test_eval_interval 100

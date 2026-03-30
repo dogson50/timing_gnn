@@ -443,6 +443,10 @@ def build_z_batch(
         z = enc(g, feats, net_focus=net_focus)
         if z.dim() == 1:
             z = z.unsqueeze(0)
+        # For arc-aware path (especially freeze HGAT), memoize by arc-key
+        # so each unique (cell_type, from_pin, to_pin) is encoded once.
+        if use_arc and z_dict is not None:
+            z_dict[key] = z.detach()
         if z_step_cache is not None:
             z_step_cache[key] = z
         return z
@@ -1169,9 +1173,10 @@ def train_balanced_sep_mlp_shared_calib(options, seed):
                     if patience_counter >= early_stop_patience:
                         print(f"[EarlyStop] no improvement for {early_stop_patience} eval rounds; stop at epoch {epoch}")
                         stop_now = True
-        if scheduler is not None and is_plateau:
-            plate_metric = float(val_loss) if (do_val_eval and val_loss is not None) else float(train_loss)
-            scheduler.step(plate_metric)
+        if scheduler is not None and is_plateau and do_val_eval and (val_loss is not None):
+            # For ReduceLROnPlateau, step on validation metric only.
+            # This avoids over-decay when val_eval_interval > 1.
+            scheduler.step(float(val_loss))
 
         test_loss, test_r2 = (None, None)
         do_test_eval = (
