@@ -1,0 +1,104 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xurl}
+\usepackage{amsmath}
+
+\title{Step5a-HGAT Paper Preparation (Detailed, EN)}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Scope and Mandatory Protocol}
+This draft follows a single mandatory protocol:
+\begin{itemize}
+  \item target split mode: \texttt{table\_group};
+  \item split ratio: \textbf{train:val = 1:5};
+  \item \textbf{no test split} (test=0).
+\end{itemize}
+
+Dataset:
+\begin{center}
+\path{output/dataset_table_group_train_val_no_test.pkl}
+\end{center}
+Target-domain counts: train=1274, val=6270, test=0.
+
+\section{Algorithm Core}
+We use Topology-Conditioned Dual Residual (TCDR) on top of a shared backbone:
+\begin{align}
+\mathbf{h} &= f_{\theta}([\mathbf{x};\mathbf{z}]), \\
+\hat{y}_{base} &= \mathbf{w}^{\top}\mathbf{h} + b, \\
+\Delta_{src} &= g_{\phi_{src}}([\mathbf{h};\mathbf{e}_t]), \\
+\Delta_{tgt} &= g_{\phi_{tgt}}([\mathbf{h};\mathbf{e}_t]).
+\end{align}
+Final prediction is base plus domain-specific residual.
+
+Training objective:
+\begin{equation}
+\mathcal{L} = \mathcal{L}_{tgt} + \lambda(e)\mathcal{L}_{src}.
+\end{equation}
+
+\section{No-Test Result Summary}
+The following tables are generated from:
+\begin{itemize}
+  \item \path{paper_materials/tables/paper_notest_core_summary.csv}
+  \item \path{paper_materials/tables/paper_t32_onefactor_summary.csv}
+\end{itemize}
+
+\subsection{Core Multi-Seed Comparison}
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+Method & NSeed & Train $R^2$ (mean+/-std) & Val $R^2$ (mean+/-std) & Val Loss (mean+/-std) \\
+\midrule
+Baseline(shared linear) & 5 & 0.9024+/-0.0086 & 0.8726+/-0.0067 & 0.121635+/-0.006428 \\
+TCDR(16,96) & 5 & 0.9586+/-0.0085 & 0.9065+/-0.0168 & 0.089249+/-0.016086 \\
+TCDR(32,64) & 5 & \textbf{0.9582+/-0.0216} & \textbf{0.9234+/-0.0175} & \textbf{0.073105+/-0.016755} \\
+\bottomrule
+\end{tabular}
+\caption{Core architecture comparison under the 1:5 no-test protocol.}
+\end{table}
+
+\subsection{One-Factor Ablation (Main Backbone: T32x64)}
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+Method & NSeed & Train $R^2$ (mean+/-std) & Val $R^2$ (mean+/-std) & Val Loss (mean+/-std) \\
+\midrule
+T32x64 + mode\_base(enrich\_on) & 5 & 0.9682+/-0.0087 & \textbf{0.9298+/-0.0073} & \textbf{0.066996+/-0.006930} \\
+T32x64 + enrich\_off(auto) & 5 & 0.9682+/-0.0087 & \textbf{0.9298+/-0.0073} & \textbf{0.066996+/-0.006930} \\
+T32x64 + parasitic\_replace & 5 & 0.9694+/-0.0080 & 0.9294+/-0.0084 & 0.067451+/-0.008056 \\
+T32x64 + dual\_readout(mean) & 5 & 0.9582+/-0.0216 & 0.9234+/-0.0175 & 0.073105+/-0.016755 \\
+T32x64 + mode\_base+topology\_off & 5 & 0.9006+/-0.0068 & 0.8720+/-0.0034 & 0.122180+/-0.003232 \\
+\bottomrule
+\end{tabular}
+\caption{One-factor ablation on T32x64 under the same protocol.}
+\end{table}
+
+\section{Current Conclusion for Writing}
+\begin{itemize}
+  \item TCDR is the major contributor compared with baseline.
+  \item Under the current no-test setting, TCDR(32,64) is the strongest candidate.
+  \item Under fixed T32x64, mode\_base(enrich\_on) and enrich\_off(auto) are strongest and numerically identical.
+  \item Topology-off causes a large drop (Val $R^2$: 0.9298 $\rightarrow$ 0.8720), supporting topology-conditioned residual as the key contribution.
+  \item T16x96 one-factor ablations are kept as supplementary comparison (not the main table).
+\end{itemize}
+
+\section{Reproducibility}
+Statistics are reproducible by:
+\begin{center}
+\path{ICCAD2026_Changxin/paper_materials/tables/build_step5a_notest_tables.ps1}
+\end{center}
+and the T32 one-factor table is rebuilt by:
+\begin{center}
+\path{ICCAD2026_Changxin/paper_materials/tables/build_step5a_t32_onefactor_tables.ps1}
+\end{center}
+
+\end{document}

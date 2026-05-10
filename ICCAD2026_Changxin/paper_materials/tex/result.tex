@@ -1,0 +1,70 @@
+\section{Experiments}
+\label{sec:results}
+
+\subsection{Dataset and Protocol}
+All results in this draft follow a unified \textbf{train/validation-only} protocol:
+\begin{itemize}
+  \item target split mode: \texttt{table\_group};
+  \item split ratio: \textbf{1:5} (train:val);
+  \item no test split (test=0).
+\end{itemize}
+
+The dataset used here is \texttt{output/dataset\_table\_group\_train\_val\_no\_test.pkl}
+with target-domain counts:
+train=1274, val=6270, test=0.
+
+\subsection{Core Multi-Seed Comparison}
+We report multi-seed statistics from
+\texttt{paper\_notest\_core\_summary.csv}.
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccc}
+\toprule
+Method & NSeed & Train $R^2$ (mean+/-std) & Val $R^2$ (mean+/-std) & Val Loss (mean+/-std) \\
+\midrule
+Baseline (shared linear) & 5 & 0.9024+/-0.0086 & 0.8726+/-0.0067 & 0.121635+/-0.006428 \\
+TCDR (16,96) & 5 & 0.9586+/-0.0085 & 0.9065+/-0.0168 & 0.089249+/-0.016086 \\
+TCDR (32,64) & 5 & \textbf{0.9582+/-0.0216} & \textbf{0.9234+/-0.0175} & \textbf{0.073105+/-0.016755} \\
+\bottomrule
+\end{tabular}
+\caption{Core architecture comparison under 1:5 train/val protocol (no test split).}
+\label{tab:notest_core}
+\end{table}
+
+Both TCDR variants significantly outperform the baseline on validation metrics.
+In the current no-test setting, TCDR (32,64) gives the strongest mean validation score.
+
+\subsection{One-Factor Ablation (Main: T32x64)}
+With TCDR (32,64) as the fixed backbone, we vary one factor at a time and report
+multi-seed statistics from \texttt{paper\_t32\_onefactor\_summary.csv}.
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccc}
+\toprule
+Method & NSeed & Train $R^2$ (mean+/-std) & Val $R^2$ (mean+/-std) & Val Loss (mean+/-std) \\
+\midrule
+T32x64 + mode\_base(enrich\_on) & 5 & 0.9682+/-0.0087 & \textbf{0.9298+/-0.0073} & \textbf{0.066996+/-0.006930} \\
+T32x64 + enrich\_off(auto) & 5 & 0.9682+/-0.0087 & \textbf{0.9298+/-0.0073} & \textbf{0.066996+/-0.006930} \\
+T32x64 + parasitic\_replace & 5 & 0.9694+/-0.0080 & 0.9294+/-0.0084 & 0.067451+/-0.008056 \\
+T32x64 + dual\_readout(mean) & 5 & 0.9582+/-0.0216 & 0.9234+/-0.0175 & 0.073105+/-0.016755 \\
+T32x64 + mode\_base+topology\_off & 5 & 0.9006+/-0.0068 & 0.8720+/-0.0034 & 0.122180+/-0.003232 \\
+\bottomrule
+\end{tabular}
+\caption{One-factor ablations on T32x64 under the same 1:5 no-test protocol.}
+\label{tab:notest_component}
+\end{table}
+
+\subsection{Current Takeaway}
+\begin{itemize}
+  \item TCDR remains the primary gain source in no-test OOD validation.
+  \item TCDR (32,64) is currently the strongest candidate under this protocol.
+  \item In T32x64 ablation, the strongest settings are mode\_base(enrich\_on) and enrich\_off(auto), with identical statistics.
+  \item Turning topology expert off causes a large drop (Val $R^2$: 0.9298 $\rightarrow$ 0.8720), confirming topology-conditioned residual as a key contributor.
+  \item T16x96 one-factor results are kept as supplementary evidence (see \texttt{paper\_notest\_component\_summary.csv}).
+\end{itemize}

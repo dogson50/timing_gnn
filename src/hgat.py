@@ -334,13 +334,31 @@ def build_dgl_graph_from_devs(devs, top_pins, passives=None, return_meta=False):
     return g, feats, get_hgat_in_dim_map()
 
 
-def build_dgl_graph_from_devs_rich(devs, top_pins, passives=None, return_meta=False):
+def build_dgl_graph_from_devs_rich(
+    devs,
+    top_pins,
+    passives=None,
+    return_meta=False,
+    enrich_parasitic_net_feat=False,
+    include_body_edges=False,
+    net_feat_mode="auto",
+    par_cap_weight=0.5,
+):
     """Compatibility helper for step5a/step13/step14 rich-feature experiments.
 
     NET features: 7 dims
     MOS features: 8 dims
     """
     passives = passives or []
+    mode = str(net_feat_mode or "auto").strip().lower()
+    if mode == "auto":
+        mode = "parasitic_replace" if bool(enrich_parasitic_net_feat) else "base"
+    valid_modes = {"base", "parasitic_replace", "parasitic_append", "parasitic_append_split"}
+    if mode not in valid_modes:
+        raise ValueError(f"Unsupported net_feat_mode='{net_feat_mode}', valid: {sorted(valid_modes)}")
+    cap_w = float(par_cap_weight)
+    cap_w = min(max(cap_w, 0.0), 1.0)
+    res_w = 1.0 - cap_w
     nets = {}
 
     def net_id(name):
@@ -364,6 +382,16 @@ def build_dgl_graph_from_devs_rich(devs, top_pins, passives=None, return_meta=Fa
             gate_dst_p.append(idx)
             sd_src_p.extend([idx, idx])
             sd_dst_p.extend([net_id(d["s"]), net_id(d["d"])])
+            if include_body_edges:
+                b = d.get("b")
+                if b is not None and str(b) != "":
+                    b_alias = _net_alias(b)
+                    s_alias = _net_alias(d.get("s", ""))
+                    d_alias = _net_alias(d.get("d", ""))
+                    # Keep only non-power, informative body links.
+                    if b_alias not in {"VDD", "VSS"} and b_alias not in {s_alias, d_alias}:
+                        sd_src_p.append(idx)
+                        sd_dst_p.append(net_id(b))
         elif dev_type.startswith("n"):
             idx = len(n_devs)
             n_devs.append(d)
@@ -371,6 +399,16 @@ def build_dgl_graph_from_devs_rich(devs, top_pins, passives=None, return_meta=Fa
             gate_dst_n.append(idx)
             sd_src_n.extend([idx, idx])
             sd_dst_n.extend([net_id(d["s"]), net_id(d["d"])])
+            if include_body_edges:
+                b = d.get("b")
+                if b is not None and str(b) != "":
+                    b_alias = _net_alias(b)
+                    s_alias = _net_alias(d.get("s", ""))
+                    d_alias = _net_alias(d.get("d", ""))
+                    # Keep only non-power, informative body links.
+                    if b_alias not in {"VDD", "VSS"} and b_alias not in {s_alias, d_alias}:
+                        sd_src_n.append(idx)
+                        sd_dst_n.append(net_id(b))
 
     p_count, n_count = len(p_devs), len(n_devs)
     res_src, res_dst = [], []
@@ -437,18 +475,49 @@ def build_dgl_graph_from_devs_rich(devs, top_pins, passives=None, return_meta=Fa
     for nid in sd_dst_p + sd_dst_n:
         sd_deg[int(nid)] += 1.0
     par_deg = np.zeros(len(nets), dtype=np.float32)
+    cap_ground = np.zeros(len(nets), dtype=np.float32)
+    cap_couple = np.zeros(len(nets), dtype=np.float32)
+    res_sum = np.zeros(len(nets), dtype=np.float32)
+    res_gsum = np.zeros(len(nets), dtype=np.float32)
     for elem in passives:
         n1 = nets.get(elem["n1"])
         n2 = nets.get(elem["n2"])
         if n1 is None or n2 is None:
             continue
+        kind = str(elem.get("kind", "")).lower()
+        val = abs(float(elem.get("value", 0.0) or 0.0))
         par_deg[n1] += 1.0
         par_deg[n2] += 1.0
+        if kind == "res":
+            res_sum[n1] += val
+            res_sum[n2] += val
+            g_cond = 1.0 / max(val, 1e-12)
+            res_gsum[n1] += g_cond
+            res_gsum[n2] += g_cond
+        elif kind == "cap":
+            a1 = _net_alias(elem["n1"])
+            a2 = _net_alias(elem["n2"])
+            if a1 == a2 or a1 in {"VDD", "VSS"} or a2 in {"VDD", "VSS"}:
+                cap_ground[n1] += val
+                cap_ground[n2] += val
+            else:
+                cap_couple[n1] += val
+                cap_couple[n2] += val
     deg = gate_deg + sd_deg + par_deg
 
     max_deg = float(max(1.0, deg.max() if deg.size > 0 else 1.0))
     max_gate_deg = float(max(1.0, gate_deg.max() if gate_deg.size > 0 else 1.0))
     max_sd_deg = float(max(1.0, sd_deg.max() if sd_deg.size > 0 else 1.0))
+
+    def _norm_log1p_np(arr):
+        if arr.size == 0:
+            return arr.astype(np.float32)
+        max_v = float(max(1.0, float(arr.max())))
+        return (np.log1p(arr) / np.log1p(max_v)).astype(np.float32)
+
+    cap_norm = _norm_log1p_np(cap_ground + cap_couple)
+    res_norm = 0.5 * _norm_log1p_np(res_sum) + 0.5 * _norm_log1p_np(res_gsum)
+    par_strength = cap_w * cap_norm + res_w * res_norm
 
     top_pin_set = {str(p).upper() for p in (top_pins or [])}
     rail_set = {"VDD", "VPWR", "VCC", "VSS", "VGND", "GND"}
@@ -462,11 +531,20 @@ def build_dgl_graph_from_devs_rich(devs, top_pins, passives=None, return_meta=Fa
         deg_norm = float(np.log1p(deg[nid]) / np.log1p(max_deg))
         gate_norm = float(np.log1p(gate_deg[nid]) / np.log1p(max_gate_deg))
         sd_norm = float(np.log1p(sd_deg[nid]) / np.log1p(max_sd_deg))
-        f_net.append([is_vdd, is_vss, is_top_pin, deg_norm, gate_norm, sd_norm, is_internal])
+        par_feat = float(par_strength[nid])
+        if mode == "base":
+            f_net.append([is_vdd, is_vss, is_top_pin, deg_norm, gate_norm, sd_norm, is_internal])
+        elif mode == "parasitic_replace":
+            f_net.append([is_vdd, is_vss, is_top_pin, deg_norm, gate_norm, sd_norm, par_feat])
+        elif mode == "parasitic_append":
+            f_net.append([is_vdd, is_vss, is_top_pin, deg_norm, gate_norm, sd_norm, is_internal, par_feat])
+        else:  # parasitic_append_split
+            f_net.append([is_vdd, is_vss, is_top_pin, deg_norm, gate_norm, sd_norm, is_internal, float(cap_norm[nid]), float(res_norm[nid])])
     if f_net:
         f_net = torch.tensor(np.array(f_net, dtype=np.float32))
     else:
-        f_net = torch.zeros((0, 7), dtype=torch.float32)
+        net_dim = 9 if mode == "parasitic_append_split" else (8 if mode == "parasitic_append" else 7)
+        f_net = torch.zeros((0, net_dim), dtype=torch.float32)
 
     def safe_log10(v, eps=1e-12):
         return float(np.log10(max(float(v), eps)))
@@ -513,7 +591,8 @@ def build_dgl_graph_from_devs_rich(devs, top_pins, passives=None, return_meta=Fa
     f_p = mos_feats(p_devs)
     f_n = mos_feats(n_devs)
     feats = {"NET": f_net, "PMOS": f_p, "NMOS": f_n}
-    in_dim_map = {"NET": 7, "PMOS": 8, "NMOS": 8}
+    net_dim = 9 if mode == "parasitic_append_split" else (8 if mode == "parasitic_append" else 7)
+    in_dim_map = {"NET": net_dim, "PMOS": 8, "NMOS": 8}
     if return_meta:
         return g, feats, in_dim_map, _build_graph_meta(nets, top_pins)
     return g, feats, in_dim_map

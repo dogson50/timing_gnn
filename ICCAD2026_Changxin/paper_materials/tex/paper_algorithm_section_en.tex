@@ -1,0 +1,176 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{xurl}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\title{Algorithm Section}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Algorithm}
+\label{sec:algorithm}
+
+\subsection{Overview}
+
+Our method, termed the topology-aware calibrated delay predictor (TCDP), targets low-resource cross-technology-node timing prediction at the timing-arc level. For each queried arc, TCDP combines two complementary inputs: 1) a compact numerical descriptor that summarizes the operating condition and device-level electrical statistics, and 2) an arc-aware heterogeneous-graph embedding extracted from the underlying transistor-level circuit. Knowledge transfer across technology nodes is achieved through a shared encoder and a shared prediction backbone, while residual process-dependent mismatch is modeled by lightweight domain-specific calibration heads and a topology-aware residual branch.
+
+\subsection{Problem Formulation}
+
+We formulate standard-cell timing prediction at the timing-arc level. For the $i$-th sample, let $c_i$ denote the cell type, $p_i^{\mathrm{in}}$ and $p_i^{\mathrm{out}}$ denote the queried input and output pins, and
+\begin{equation}
+    a_i = \left(p_i^{\mathrm{in}}, p_i^{\mathrm{out}}\right)
+\end{equation}
+denote the queried timing arc to avoid pin/arc ambiguity. Let
+\begin{equation}
+    \omega_i = \left(\sigma_i, \kappa_i, \pi_i, s_i, l_i, v_i, T_i\right)
+\end{equation}
+collect the timing sense, normalized arc condition, polarity, slew, load, voltage, and temperature. One prediction instance is written as
+\begin{equation}
+    \mathbf{u}_i = \left(c_i, a_i, \omega_i, y_i\right),
+\end{equation}
+where $y_i$ is the target delay value. Each sample is additionally associated with a numerical descriptor
+\begin{equation}
+    \mathbf{x}_i \in \mathbb{R}^{d_x},
+\end{equation}
+which aggregates operating-condition terms, transistor-width statistics extracted from SPICE, polarity information, and lightweight electrical surrogates derived from device-level attributes. The overall goal is to learn a predictor that maps the queried arc, its operating condition, and the corresponding cell graph to the target delay.
+
+\subsection{Parasitic-Aware Heterogeneous Graph Encoder}
+
+For each standard cell, we parse the transistor-level SPICE netlist and build a heterogeneous graph
+\begin{equation}
+    \mathcal{G}_c = \left(\mathcal{V}_{\mathrm{NET}} \cup \mathcal{V}_{\mathrm{PMOS}} \cup \mathcal{V}_{\mathrm{NMOS}}, \mathcal{E}\right).
+\end{equation}
+The graph contains three node types: nets, PMOS devices, and NMOS devices. Relation types encode gate control, source/drain connectivity, reverse connectivity, and parasitic interactions induced by passive elements. Parasitic effects are encoded through net-level descriptors and heterogeneous relations, which keeps the graph compact while preserving physically relevant information.
+
+Let $\mathbf{f}_v$ denote the raw feature vector of node $v$. Type-specific linear projections are first applied:
+\begin{equation}
+    \mathbf{h}_v^{(0)} = W_{\phi(v)} \mathbf{f}_v.
+\end{equation}
+We then stack $L$ heterogeneous graph-attention blocks. At layer $\ell$, relation-specific multi-head attention aggregates messages from each incoming relation:
+\begin{equation}
+    \tilde{\mathbf{h}}_v^{(\ell+1)} =
+    \sum_{r \in \mathcal{R}(v)}
+    \mathrm{GAT}_r^{(\ell)}
+    \left(
+        \left\{\mathbf{h}_u^{(\ell)}: u \in \mathcal{N}_r(v)\right\}
+    \right).
+\end{equation}
+Each block then applies residual connection, layer normalization, nonlinear activation, and dropout:
+\begin{equation}
+    \mathbf{h}_v^{(\ell+1)} =
+    \mathrm{Dropout}
+    \left(
+        \mathrm{ReLU}
+        \left(
+            \mathrm{LN}
+            \left(
+                \tilde{\mathbf{h}}_v^{(\ell+1)} + \mathbf{h}_v^{(\ell)}
+            \right)
+        \right)
+    \right).
+\end{equation}
+
+To predict a specific timing arc, the graph readout is conditioned on the queried input and output pins. These pins are mapped to their corresponding nets, and the encoder focuses the readout on the local net region most relevant to this arc. The resulting arc-aware graph representation is
+\begin{equation}
+    \mathbf{z}_i = E_{\phi}\left(\mathcal{G}_{c_i}, a_i\right).
+\end{equation}
+This design allows the encoder to retain cell-level topology while emphasizing the structural subregion directly associated with the queried timing path.
+
+\subsection{Topology-Aware Calibrated Delay Predictor}
+
+The predictor takes the concatenation of the numerical descriptor and graph embedding:
+\begin{equation}
+    \mathbf{q}_i = \left[\mathbf{x}_i \Vert \mathbf{z}_i\right].
+\end{equation}
+A shared multilayer perceptron maps $\mathbf{q}_i$ to a hidden representation
+\begin{equation}
+    \mathbf{h}_i = f_{\mathrm{bb}}(\mathbf{q}_i),
+\end{equation}
+which is reused across both source and target domains. TCDP uses an explicit three-part decomposition:
+\begin{equation}
+    \hat{y}_i = \underbrace{f_{\mathrm{sh}}(\mathbf{h}_i)}_{\text{shared backbone output}}
+    + \underbrace{f^{\mathrm{cal}}_{d_i}(\mathbf{h}_i)}_{\text{domain calibration head}}
+    + \underbrace{\delta^{\mathrm{topo}}_{d_i}}_{\text{topology residual head}},
+\end{equation}
+where
+\begin{equation}
+    \delta^{\mathrm{topo}}_{d_i} = f^{\mathrm{topo}}_{d_i}\!\left(\left[\mathbf{h}_i \Vert \mathbf{e}_{\tau_i}\right]\right),
+\end{equation}
+and $d_i \in \{s,t\}$ denotes the sample domain. For readability, the first two terms are also written as
+\begin{equation}
+    \hat{y}_i =
+    f_{\mathrm{sh}}(\mathbf{h}_i)
+    +
+    f^{\mathrm{cal}}_{d_i}(\mathbf{h}_i),
+\end{equation}
+with topology residual added afterward.
+
+To further exploit the fact that drive-strength variants within the same logic family share related timing behavior, TCDP introduces a topology-aware residual branch. Let $\tau_i$ denote the topology group obtained by collapsing drive-strength variants of the same logic family. A learned topology embedding $\mathbf{e}_{\tau_i}$ is concatenated with $\mathbf{h}_i$ and fed to an additional residual function:
+\begin{equation}
+    \hat{y}_i =
+    f_{\mathrm{sh}}(\mathbf{h}_i)
+    +
+    f^{\mathrm{cal}}_{d_i}(\mathbf{h}_i)
+    +
+    f^{\mathrm{topo}}_{d_i}
+    \left(
+        \left[\mathbf{h}_i \Vert \mathbf{e}_{\tau_i}\right]
+    \right).
+\end{equation}
+This branch captures topology-family-dependent delay corrections that are reusable across drive-strength variants while still allowing domain-specific residual adaptation.
+
+\subsection{Cross-Node Learning Objective}
+
+During training, source- and target-domain samples are balanced within each optimization step. Let $B_t$ and $B_s$ denote the target- and source-domain mini-batches, respectively. Using a pointwise regression loss $\ell(\hat{y},y)$, the target- and source-domain losses are
+\begin{equation}
+    \mathcal{L}_t =
+    \frac{1}{|B_t|}
+    \sum_{i \in B_t}
+    \ell(\hat{y}_i, y_i),
+\end{equation}
+\begin{equation}
+    \mathcal{L}_s =
+    \frac{1}{|B_s|}
+    \sum_{i \in B_s}
+    \ell(\hat{y}_i, y_i).
+\end{equation}
+The mini-batch objective is
+\begin{equation}
+    \mathcal{L}_{\mathrm{batch}} =
+    \mathcal{L}_t + \alpha(e)\,\mathcal{L}_s,
+\end{equation}
+where $\alpha(e)$ is an epoch-dependent source-weight schedule (source-weight annealing):
+\begin{equation}
+\alpha(e)=
+\begin{cases}
+1, & e \le e_{\mathrm{start}},\\[4pt]
+1-\left(1-\alpha_{\mathrm{final}}\right)\dfrac{e-e_{\mathrm{start}}}{e_{\mathrm{end}}-e_{\mathrm{start}}}, & e_{\mathrm{start}}<e<e_{\mathrm{end}},\\[8pt]
+\alpha_{\mathrm{final}}, & e \ge e_{\mathrm{end}}.
+\end{cases}
+\end{equation}
+This objective keeps the optimization simple while encouraging the predictor to retain transferable structural knowledge from the source domain and gradually shift emphasis to target-domain fitting in late epochs.
+
+\subsection{Ablation Mapping to Model Components}
+
+To improve interpretability of one-factor ablations, we map each switch to the exact computational change:
+\begin{itemize}
+    \item \textbf{TopologyOff}: disable topology residual head, i.e.,
+    \begin{equation}
+        f^{\mathrm{topo}}_{d}(\cdot)\equiv 0.
+    \end{equation}
+    \item \textbf{DualMean}: keep dual readout branches and replace default merge with arithmetic mean,
+    \begin{equation}
+        \mathbf{z}_i = \frac{1}{2}\!\left(\mathbf{z}_i^{(1)}+\mathbf{z}_i^{(2)}\right).
+    \end{equation}
+    \item \textbf{ParasiticReplace}: replace the NET parasitic feature construction with parasitic-dominant replacement mode (instead of base NET descriptors).
+    \item \textbf{EnrichOff(auto)}: disable explicit parasitic NET enrichment and fall back to the default auto/base NET feature path.
+\end{itemize}
+Under this mapping, each ablation modifies exactly one operator in feature construction or readout while preserving the same optimizer and data protocol.
+
+Compared with explicit alignment-based transfer methods, TCDP performs cross-node adaptation through shared graph-aware prediction, domain-specific calibration, and topology-aware residual correction. This design preserves the structural inductive bias of heterogeneous graph learning while remaining lightweight enough for low-resource timing prediction.
+
+\end{document}

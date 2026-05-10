@@ -1,0 +1,262 @@
+\documentclass[12pt,a4paper]{ctexart}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{tabularx}
+\usepackage{xurl}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\title{Step5a 算法与实验准备（中文版，T32 主口径）}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{文档目的}
+本稿用于组会汇报，统一当前实验口径，并给出可直接写入论文的结果表述。
+\begin{enumerate}
+  \item 数据协议统一为 \textbf{table\_group + train:val=1:5 + 无测试集}；
+  \item 主文消融统一在 \textbf{TCDR(32,64)} 上进行；
+  \item TCDR(16,96) 仅作为补充对照，不作为主文主表。
+\end{enumerate}
+
+\section{数据协议}
+\begin{itemize}
+  \item 划分模式：\texttt{table\_group}
+  \item 划分比例：\textbf{train:val = 1:5}
+  \item 测试集：\textbf{不使用（test=0）}
+\end{itemize}
+
+统一数据集：
+\begin{center}
+\texttt{output/dataset\_table\_group\_train\_val\_no\_test.pkl}
+\end{center}
+目标域样本统计：train=1274，val=6270，test=0。
+
+\section{模型概述（TCDR）}
+共享主干先提取特征：
+\begin{equation}
+\mathbf{h}=f_{\theta}([\mathbf{x};\mathbf{z}]).
+\end{equation}
+共享线性头给出基预测：
+\begin{equation}
+\hat{y}_{base}=\mathbf{w}^{\top}\mathbf{h}+b.
+\end{equation}
+再引入拓扑条件残差专家：
+\begin{equation}
+\Delta_{src}=g_{\phi_{src}}([\mathbf{h};\mathbf{e}_t]),\quad
+\Delta_{tgt}=g_{\phi_{tgt}}([\mathbf{h};\mathbf{e}_t]),
+\end{equation}
+最终预测：
+\begin{equation}
+\hat{y}=
+\begin{cases}
+\hat{y}_{base}+\Delta_{src}, & \text{source}\\
+\hat{y}_{base}+\Delta_{tgt}, & \text{target}
+\end{cases}
+\end{equation}
+
+\section{统一训练设置}
+主实验固定参数（除被消融项）：
+\begin{itemize}
+  \item \texttt{--freeze\_hgat}
+  \item \texttt{--num\_epoch 260}, \texttt{--batch\_size 2048}
+  \item \texttt{--learning\_rate 2e-3}, \texttt{--enc\_lr\_scale 0.05}
+  \item \texttt{--weight\_decay 5e-5}, \texttt{--mlp\_dropout 0.2}
+  \item \texttt{--hgat\_l2\_norm}, \texttt{--z\_noise\_std 0.01}
+  \item \texttt{--hgat\_par\_cap\_weight 0.6}
+  \item \texttt{--src\_loss\_anneal\_start 80}, \texttt{--src\_loss\_anneal\_end 280}
+  \item \texttt{--src\_loss\_final\_scale 0.8}
+  \item Scheduler=\texttt{plateau}，factor=0.5，patience=3，threshold=3e-4，min\_lr=1e-6
+  \item Early stop：patience=12，min\_delta=8e-4
+  \item \texttt{--val\_eval\_interval 5}, \texttt{--skip\_test\_eval}
+\end{itemize}
+
+\subsection{评价指标与统计规则}
+为避免不同 seed 最优轮次不一致导致的统计偏差，本稿统一采用日志中的 \texttt{[Best]} 行（由验证损失选择）进行聚合，统计列为：
+\begin{itemize}
+  \item \texttt{Train R\textsuperscript{2}@Best}；
+  \item \texttt{Val R\textsuperscript{2}}；
+  \item \texttt{Val Loss}（MSE）；
+  \item \texttt{Best Epoch}。
+\end{itemize}
+其中
+\begin{equation}
+R^2 = 1-\frac{\sum_i (y_i-\hat{y}_i)^2}{\sum_i (y_i-\bar{y})^2},\qquad
+\text{MSE} = \frac{1}{N}\sum_i (y_i-\hat{y}_i)^2 .
+\end{equation}
+汇总结果均报告为 5-seed 的 mean$\pm$std。
+
+\section{核心结果（Core，多 seed）}
+来源：\texttt{paper\_materials/tables/paper\_notest\_core\_summary.csv}
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{L{3.3cm}c c c c}
+\toprule
+方法 & NSeed & Train $R^2$ (mean$\pm$std) & Val $R^2$ (mean$\pm$std) & Val Loss (mean$\pm$std) \\
+\midrule
+Baseline(shared linear) & 5 & 0.9024$\pm$0.0086 & 0.8726$\pm$0.0067 & 0.121635$\pm$0.006428 \\
+TCDR(16,96) & 5 & 0.9586$\pm$0.0085 & 0.9065$\pm$0.0168 & 0.089249$\pm$0.016086 \\
+TCDR(32,64) & 5 & \textbf{0.9582$\pm$0.0216} & \textbf{0.9234$\pm$0.0175} & \textbf{0.073105$\pm$0.016755} \\
+\bottomrule
+\end{tabular}
+\caption{Core 架构对比（1:5，无测试集）。}
+\label{tab:core_cn}
+\end{table}
+
+\subsection{Core 结果解读}
+\begin{enumerate}
+  \item 相比 Baseline(shared linear)，TCDR(32,64) 的 Val $R^2$ 绝对提升 \textbf{+0.0508}（0.8726 $\rightarrow$ 0.9234），Val Loss 相对下降约 \textbf{39.9\%}（0.121635 $\rightarrow$ 0.073105）。
+  \item 相比 TCDR(16,96)，TCDR(32,64) 的 Val $R^2$ 进一步提升 \textbf{+0.0169}，Val Loss 相对下降约 \textbf{18.09\%}。
+  \item 两个 TCDR 分支的 Train $R^2$ 接近，但验证指标存在稳定差异，说明提升不仅是拟合增强，更来自跨域迁移稳定性的改善。
+\end{enumerate}
+
+\section{主文 One-factor 消融（固定 T32x64）}
+来源：\texttt{paper\_materials/tables/paper\_t32\_onefactor\_summary.csv}
+
+\subsection{消融设计说明}
+为保证可解释性，采用 one-factor 设计：
+\begin{itemize}
+  \item 每次只改一个组件；
+  \item 其余配置保持一致；
+  \item 使用相同协议与相同 seed 集合（9294--9298）；
+  \item 统一使用 \texttt{[Best]} 行统计 Train/Val 指标。
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabularx}{\linewidth}{L{3.0cm}L{3.8cm}L{3.8cm}X}
+\toprule
+消融项 & 仅改变的内容 & 保持不变的内容 & 验证目标 \\
+\midrule
+ModeBase(enrich\_on) &
+\texttt{hgat\_net\_feat\_mode=base}；保留 \texttt{enrich\_parasitic\_net\_feat} &
+T32x64 主干、拓扑专家、优化器与训练策略 &
+确认当前最稳定的 NET 特征路径 \\
+
+EnrichOff(auto) &
+关闭 \texttt{enrich\_parasitic\_net\_feat}；\texttt{hgat\_net\_feat\_mode=auto} &
+其余全部不变 &
+确认 enrich 开关是否提供额外有效信息 \\
+
+ParasiticReplace &
+\texttt{hgat\_net\_feat\_mode=}\newline
+\texttt{parasitic\_replace} &
+其余全部不变 &
+验证“替换式寄生特征”与主配置差异 \\
+
+DualMean &
+打开 \texttt{hgat\_dual\_readout}；\texttt{hgat\_dual\_merge=mean} &
+其余全部不变 &
+检验双读出是否带来额外增益 \\
+
+ModeBase+TopoOff &
+在 ModeBase 条件下关闭 \texttt{use\_topology\_expert} &
+其余全部不变 &
+直接量化拓扑残差专家的贡献 \\
+\bottomrule
+\end{tabularx}
+\renewcommand{\arraystretch}{1}
+\caption{T32x64 one-factor 设计与控制变量。}
+\label{tab:t32_design_cn}
+\end{table}
+
+\subsection{T32x64 消融结果}
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{L{4.3cm}c c c c}
+\toprule
+方法 & NSeed & Train $R^2$ (mean$\pm$std) & Val $R^2$ (mean$\pm$std) & Val Loss (mean$\pm$std) \\
+\midrule
+T32x64 + BasePath(mainline) & 5 & 0.9682$\pm$0.0087 & \textbf{0.9298$\pm$0.0073} & \textbf{0.066996$\pm$0.006930} \\
+T32x64 + ParasiticReplace & 5 & 0.9694$\pm$0.0080 & 0.9294$\pm$0.0084 & 0.067451$\pm$0.008056 \\
+T32x64 + DualMean & 5 & 0.9582$\pm$0.0216 & 0.9234$\pm$0.0175 & 0.073105$\pm$0.016755 \\
+T32x64 + ModeBase+TopoOff & 5 & 0.9006$\pm$0.0068 & 0.8720$\pm$0.0034 & 0.122180$\pm$0.003232 \\
+\bottomrule
+\end{tabular}
+\caption{主文 one-factor 消融（固定 T32x64）。}
+\label{tab:t32_ablation_cn}
+\end{table}
+
+\subsection{T32 one-factor 结果解读}
+\begin{enumerate}
+  \item \textbf{拓扑专家是核心增益项}：ModeBase(mainline) 与 ModeBase+TopoOff 的 Val $R^2$ 差值为 \textbf{0.0578}（0.9298 vs 0.8720），Val Loss 增量为 \textbf{0.055184}。
+  \item \textbf{ParasiticReplace 收益不稳定}：相对 mainline 的 Val $R^2$ 差值仅 \textbf{-0.0005}，说明“替换式”寄生注入未形成稳定优势。
+  \item \textbf{DualMean 在当前协议下非收益项}：相对 mainline 的 Val $R^2$ 差值为 \textbf{-0.0064}，并伴随更高的 Val Loss。
+  \item \textbf{等价配置需避免重复计功}：EnrichOff(auto) 与 ModeBase(mainline) 在当前实现中落入同一 NET base 路径，指标一致应视为一致性验证，不应在主表中作为两条独立贡献。
+\end{enumerate}
+
+\noindent\textbf{组会汇报口径：}
+主线方法定义为 \textbf{T32x64 + BasePath(mainline)}。
+\texttt{EnrichOff(auto)} 不单列在主表中，仅作为“等价配置一致性验证”：
+在当前实现中它会落到同一条 NET base 特征路径，指标与 BasePath(mainline) 一致。
+
+\subsection{为什么主线有优势}
+\begin{enumerate}
+  \item 关闭拓扑专家后，Val $R^2$ 从 0.9298 降到 0.8720（下降约 0.058），说明拓扑条件残差是核心增益来源。
+  \item BasePath 与 EnrichOff(auto) 数值一致，说明主线结果稳定，不依赖脆弱开关。
+  \item DualMean 未带来稳定增益，建议作为补充分析而非主卖点。
+\end{enumerate}
+
+\section{补充消融（T16x96，对照）}
+来源：\texttt{paper\_materials/tables/paper\_notest\_component\_summary.csv}
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{L{4.0cm}c c c c}
+\toprule
+方法 & NSeed & Train $R^2$ (mean$\pm$std) & Val $R^2$ (mean$\pm$std) & Val Loss (mean$\pm$std) \\
+\midrule
+T16x96 + ModeBase(enrich\_on) & 5 & 0.9548$\pm$0.0122 & \textbf{0.9160$\pm$0.0139} & \textbf{0.080192$\pm$0.013224} \\
+T16x96 + EnrichOff(auto) & 5 & 0.9548$\pm$0.0122 & \textbf{0.9160$\pm$0.0139} & \textbf{0.080192$\pm$0.013224} \\
+T16x96 + ParasiticReplace & 5 & 0.9562$\pm$0.0118 & 0.9151$\pm$0.0113 & 0.081077$\pm$0.010834 \\
+T16x96 + DualMean & 5 & 0.9586$\pm$0.0085 & 0.9065$\pm$0.0168 & 0.089249$\pm$0.016086 \\
+T16x96 + ModeBase+TopoOff & 5 & 0.9006$\pm$0.0068 & 0.8720$\pm$0.0034 & 0.122180$\pm$0.003232 \\
+\bottomrule
+\end{tabular}
+\caption{补充消融（固定 T16x96，仅作对照）。}
+\label{tab:t16_ablation_cn}
+\end{table}
+
+\section{实验局限与口径边界}
+\begin{itemize}
+  \item 当前协议为 \textbf{train:val=1:5 且无独立测试集}，因此本节结论用于模型选择与机制验证，不用于最终泛化主张。
+  \item Val 指标最优不等价于跨分布最终最优；后续需在恢复 test 或 cross-group CV 后再给出最终泛化结论。
+  \item 当前表格未加入显著性检验（如 paired seed t-test / Wilcoxon），主文投稿前建议补齐。
+\end{itemize}
+
+\section{当前可用于组会与写作的结论}
+\begin{enumerate}
+  \item 在 table\_group + 1:5 + 无测试集协议下，TCDR(32,64) 在 Val 指标最优。
+  \item 主线应写为 T32x64 + BasePath(mainline)；EnrichOff(auto) 仅作为等价验证。
+  \item Topology expert 是关键贡献组件，关闭后性能明显退化。
+  \item 当前结论是阶段性结论；后续恢复独立泛化评估（test 或交叉验证）。
+\end{enumerate}
+
+\section{复现入口}
+\subsection{T32 主文消融批量运行}
+\begin{center}
+\texttt{powershell -ExecutionPolicy Bypass -File}\\
+\path{ICCAD2026_Changxin/paper_materials/tables/run_step5a_t32_onefactor.ps1}
+\end{center}
+
+\subsection{T32 消融结果统计}
+\begin{center}
+\texttt{powershell -ExecutionPolicy Bypass -File}\\
+\path{ICCAD2026_Changxin/paper_materials/tables/build_step5a_t32_onefactor_tables.ps1}
+\end{center}
+
+\end{document}

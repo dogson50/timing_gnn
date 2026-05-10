@@ -1,0 +1,114 @@
+\documentclass[12pt,a4paper]{ctexart}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{hyperref}
+\usepackage{xurl}
+
+\title{Step5a-HGAT 论文准备稿（算法与实验）}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{目标与现状}
+本稿用于论文撰写前的数据与结论固化，核心目标是回答两个问题：
+\begin{enumerate}
+  \item 目前最有效的结构改动是什么？
+  \item 该改动在 OOD（分布外）划分下是否稳定提升？
+\end{enumerate}
+
+当前我们基于 \texttt{train\_balanced\_sampling\_sep\_mlp\_shared\_calib\_step5a\_feat\_opt.py}
+完成了带测试集的系统消融，并输出了可复用结果文件：
+\begin{itemize}
+  \item \path{copilot_train_logs/paper_main_ablation_runs.csv}
+  \item \path{copilot_train_logs/paper_main_ablation_summary.csv}
+  \item \path{copilot_train_logs/paper_main_ablation_table.md}
+\end{itemize}
+
+\section{算法改动（可写论文主线）}
+\subsection{TCDR：Topology-Conditioned Dual Residual}
+在共享回归头基础上新增拓扑条件残差专家：
+\begin{enumerate}
+  \item 共享主干学习通用表示（shared base）。
+  \item 根据 \texttt{topology\_group} 的 embedding，分别对 src/tgt 预测增加残差校正。
+\end{enumerate}
+
+本质上，TCDR 将“跨工艺共享规律”和“拓扑/域相关偏差”解耦，缓解 table-group OOD 下的分布偏移。
+
+\section{实验设置}
+\subsection{数据划分}
+本轮用于论文主表的数据集为：
+\begin{center}
+\path{output/dataset_table_group_1166_with_test.pkl}
+\end{center}
+
+构建方式：\texttt{table\_group} 三划分，比例约 1:1:4（train/val/test）。
+目标域统计如下：
+\begin{itemize}
+  \item Train groups = 25，样本 1225
+  \item Val groups = 25，样本 1225
+  \item Test groups = 104，样本 5094
+\end{itemize}
+
+\subsection{训练超参数（统一）}
+\begin{itemize}
+  \item batch size = 2048，learning rate = 2e-3
+  \item 冻结 HGAT 编码器（\texttt{--freeze\_hgat}）
+  \item 使用 parasitic 增强特征（append\_split）
+  \item 3 seeds：9294 / 9295 / 9296
+\end{itemize}
+
+\section{主结果（3-seed 均值）}
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc}
+\toprule
+方法 & val\_r2 (mean+/-std) & test\_r2 (mean+/-std) & $\Delta$test vs baseline \\
+\midrule
+Baseline(shared linear) & 0.8554+/-0.0024 & 0.8496+/-0.0045 & +0.0000 \\
+TCDR(16,64) & 0.8859+/-0.0082 & 0.8888+/-0.0056 & +0.0393 \\
+TCDR(16,96) & 0.8843+/-0.0097 & 0.8860+/-0.0061 & +0.0364 \\
+TCDR(32,64) & \textbf{0.8931+/-0.0098} & \textbf{0.8951+/-0.0099} & \textbf{+0.0455} \\
+\bottomrule
+\end{tabular}
+\caption{核心结构对比（table-group 划分）}
+\end{table}
+
+\section{组件消融（围绕 TCDR(16,64)）}
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcc}
+\toprule
+方法 & val\_r2 (mean+/-std) & test\_r2 (mean+/-std) \\
+\midrule
+TCDR(16,64) & 0.8859+/-0.0082 & 0.8888+/-0.0056 \\
++ dual\_readout(mean) & 0.8859+/-0.0082 & 0.8888+/-0.0056 \\
++ calib\_mlp & \textbf{0.8951+/-0.0104} & 0.8930+/-0.0070 \\
++ parasitic\_replace & 0.8716+/-0.0116 & 0.8842+/-0.0108 \\
+\bottomrule
+\end{tabular}
+\caption{组件级消融}
+\end{table}
+
+\section{结论与下一步}
+\subsection{目前可写入论文的结论}
+\begin{enumerate}
+  \item TCDR 相比 baseline 在 OOD 划分下有稳定增益（test\_r2 提升约 0.036--0.046）。
+  \item 对本轮数据，TCDR(32,64) 均值最优；TCDR(16,64) 更稳、更简洁，可作为默认主线。
+  \item dual\_readout 在当前设置下收益不明显；parasitic\_replace 不建议作为主方案。
+\end{enumerate}
+
+\subsection{论文写作建议}
+\begin{enumerate}
+  \item 主文以 TCDR 为结构创新主线，强调“共享规律 + 拓扑域偏差解耦”。
+  \item 主表保留 baseline / TCDR(16,64) / TCDR(32,64)。
+  \item 组件消融放附表（dual readout, calib\_mlp, parasitic\_replace）。
+\end{enumerate}
+
+\end{document}

@@ -1,0 +1,139 @@
+﻿\documentclass[10pt,a4paper]{ctexart}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{xurl}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\title{论文算法部分（中文版）}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{算法}
+\label{sec:algorithm_cn}
+
+\subsection{概述}
+
+我们提出 \textbf{TCDP}（\textit{Topology-Conditioned Delay Predictor}，拓扑条件延迟预测器）用于低资源跨工艺节点的时序弧级延迟预测。
+对于每条待预测 timing arc，TCDP 融合两类互补输入：
+1）描述工作条件与器件统计的紧凑数值特征；
+2）由晶体管级电路图提取的弧感知异构图嵌入。
+跨节点迁移由共享图感知主干实现，而跨域失配由“域校准残差 + 拓扑条件残差”联合修正。
+
+\subsection{问题定义}
+
+对第 $i$ 个样本，令 $c_i$ 为标准单元类型，
+\begin{equation}
+a_i = \left(p_i^{\mathrm{in}}, p_i^{\mathrm{out}}\right)
+\end{equation}
+为查询的输入到输出时序弧。
+令
+\begin{equation}
+\omega_i = \left(\sigma_i,\kappa_i,\pi_i,s_i,l_i,v_i,T_i\right)
+\end{equation}
+分别表示时序方向/类型、归一化弧条件、极性、输入 slew、输出 load、电压与温度。
+单个样本记为
+\begin{equation}
+\mathbf{u}_i = \left(c_i, a_i, \omega_i, y_i, d_i\right),
+\end{equation}
+其中 $y_i$ 为目标延迟，$d_i\in\{s,t\}$ 表示源域/目标域。
+
+每个样本还关联一个数值描述向量
+\begin{equation}
+\mathbf{x}_i \in \mathbb{R}^{d_x},
+\end{equation}
+该向量由工作条件项、SPICE 提取的晶体管宽度统计、极性信息与轻量电气代理特征组成。
+目标是学习 $\hat y_i = F(c_i,a_i,\omega_i,\mathbf{x}_i)$，并在跨节点场景下保持稳定泛化。
+
+\subsection{寄生感知异构图编码器}
+
+对每个标准单元，我们由晶体管级网表构建异构图
+\begin{equation}
+\mathcal{G}_{c}=\left(\mathcal{V}_{\mathrm{NET}}\cup\mathcal{V}_{\mathrm{PMOS}}\cup\mathcal{V}_{\mathrm{NMOS}},\mathcal{E}\right).
+\end{equation}
+图中节点和关系类型编码了门控、源漏连接、反向连接以及寄生相关交互。
+
+令 $\mathbf{f}_v$ 为节点 $v$ 的原始特征，先做类型投影：
+\begin{equation}
+\mathbf{h}_v^{(0)} = W_{\phi(v)}\mathbf{f}_v.
+\end{equation}
+随后堆叠 $L$ 层异构注意力块：
+\begin{equation}
+\tilde{\mathbf{h}}_v^{(\ell+1)}=
+\sum_{r\in\mathcal{R}(v)}
+\mathrm{GAT}_r^{(\ell)}
+\left(\left\{\mathbf{h}_u^{(\ell)}:u\in\mathcal{N}_r(v)\right\}\right),
+\end{equation}
+\begin{equation}
+\mathbf{h}_v^{(\ell+1)}=
+\mathrm{Dropout}\!\left(
+\mathrm{ReLU}\!\left(
+\mathrm{LN}\!\left(\tilde{\mathbf{h}}_v^{(\ell+1)}+\mathbf{h}_v^{(\ell)}\right)
+\right)\right).
+\end{equation}
+
+读出阶段以查询弧 $a_i$ 为条件，聚焦其相关局部子结构：
+\begin{equation}
+\mathbf{z}_i = E_{\phi}\!\left(\mathcal{G}_{c_i},a_i\right).
+\end{equation}
+
+\subsection{拓扑条件延迟预测器延迟预测器}
+
+将数值特征与图嵌入拼接：
+\begin{equation}
+\mathbf{q}_i = [\mathbf{x}_i \Vert \mathbf{z}_i], \qquad
+\mathbf{h}_i = f_{\mathrm{bb}}(\mathbf{q}_i).
+\end{equation}
+
+最终预测分解为三项：
+\begin{equation}
+\hat y_i =
+f_{\mathrm{sh}}(\mathbf{h}_i)
++ f^{\mathrm{cal}}_{d_i}(\mathbf{h}_i)
++ f^{\mathrm{topo}}_{d_i}\!\left([\mathbf{h}_i \Vert \mathbf{e}_{\tau_i}]\right),
+\end{equation}
+其中 $\tau_i$ 是由同逻辑族（合并驱动强度变体）得到的拓扑组，$\mathbf{e}_{\tau_i}$ 为其可学习嵌入。
+第二项用于域相关校准，第三项用于拓扑族相关残差修正。
+
+\subsection{跨节点学习目标}
+
+在 epoch $e$，令 $B_t,B_s$ 分别为目标域和源域小批样本。采用 MSE：
+\begin{equation}
+\mathcal{L}_t = \frac{1}{|B_t|}\sum_{i\in B_t}(\hat y_i-y_i)^2,\qquad
+\mathcal{L}_s = \frac{1}{|B_s|}\sum_{i\in B_s}(\hat y_i-y_i)^2.
+\end{equation}
+训练目标写为
+\begin{equation}
+\mathcal{L}_{\mathrm{batch}}(e)=\mathcal{L}_t+\alpha(e)\mathcal{L}_s,
+\end{equation}
+其中源域权重按退火策略更新：
+\begin{equation}
+\alpha(e)=
+\begin{cases}
+1, & e<e_a,\\
+1-(1-\alpha_f)\dfrac{e-e_a}{e_b-e_a}, & e_a\le e<e_b,\\
+\alpha_f, & e\ge e_b.
+\end{cases}
+\end{equation}
+该策略在训练早期保留源域可迁移监督，后期逐步强调目标域拟合。
+
+\subsection{消融映射（与实验节一致）}
+
+为确保“组件变化”与“性能变化”一一对应，算法与消融映射如下：
+\begin{equation}
+\texttt{TopologyOff}: \ f^{\mathrm{topo}}_{d}(\cdot)\equiv 0,
+\end{equation}
+\begin{equation}
+\texttt{DualMean}: \ \mathbf{z}_i=\frac{\mathbf{z}_i^{\mathrm{global}}+\mathbf{z}_i^{\mathrm{arc}}}{2},
+\end{equation}
+\texttt{ParasiticReplace} 与 \texttt{EnrichOff(auto)} 对应图编码输入阶段的 NET 特征构造变化。
+该映射保证了 one-factor 消融的可解释性与可复现性。
+
+总体而言，TCDP 不依赖复杂分布对齐模块，而是通过“共享图感知主干 + 域校准残差 + 拓扑条件残差”完成跨节点适配，兼顾结构归纳偏置与工程实现轻量性。
+
+\end{document}
+

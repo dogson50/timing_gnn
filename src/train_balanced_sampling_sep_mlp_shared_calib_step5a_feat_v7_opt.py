@@ -8,6 +8,8 @@ import numbers
 import shutil
 import tempfile
 import contextlib
+import sys
+import argparse
 import numpy as np
 import torch as th
 import torch.nn as nn
@@ -38,6 +40,21 @@ ENCODER_LR_SCALE_DEFAULT = 0.2
 GRAPH_NET_DIM = 7
 GRAPH_MOS_DIM = 8
 CKPT_R2_TIE_EPS_DEFAULT = 1e-4
+
+
+def _normalize_host_path(path):
+    if not path:
+        return path
+    p = str(path)
+    if os.name != "nt":
+        return p
+    # Allow Windows Python to consume WSL-style absolute paths.
+    m = re.match(r"^/mnt/([a-zA-Z])/(.*)$", p)
+    if m:
+        drive = m.group(1).upper()
+        rest = m.group(2).replace("/", "\\")
+        return f"{drive}:\\{rest}"
+    return p
 
 
 def _resolve_hgat_net_feat_mode(options):
@@ -379,9 +396,11 @@ def build_src_graph_cache(
         return {}
 
     graph_cache = {}
+    data_dir = _normalize_host_path(data_dir)
     for ctype, sp_path in mapping.items():
         if not sp_path:
             continue
+        sp_path = _normalize_host_path(sp_path)
         if not os.path.exists(sp_path):
             cand = os.path.join(data_dir, sp_path)
             if os.path.exists(cand):
@@ -424,7 +443,8 @@ def build_tgt_graph_cache(
         print("[Warn] meta has no tgt_subckt_by_cell")
         return {}
 
-    tgt_spice = meta.get("tgt_sp_file", "")
+    data_dir = _normalize_host_path(data_dir)
+    tgt_spice = _normalize_host_path(meta.get("tgt_sp_file", ""))
     if not tgt_spice:
         print("[Warn] meta has no tgt_sp_file")
         return {}
@@ -1234,6 +1254,12 @@ class SharedCalibRegressor(nn.Module):
         topology_expert_dim=16,
         topology_expert_hidden=64,
         disable_domain_calibration=False,
+        use_disentangle=False,
+        disentangle_hidden=0,
+        topo_moe_k=1,
+        topo_moe_temp=1.0,
+        calib_branch_scale=1.0,
+        topo_branch_scale=1.0,
     ):
         super().__init__()
         self.backbone = nn.Sequential(
@@ -1243,67 +1269,177 @@ class SharedCalibRegressor(nn.Module):
             nn.Linear(hid, hid),
             nn.ReLU(),
         )
-        self.shared_head = nn.Linear(hid, 1)
+        self.use_disentangle = bool(use_disentangle)
+        self.disentangle_hidden = int(disentangle_hidden) if int(disentangle_hidden) > 0 else int(hid)
+        self.disentangle_hidden = max(8, self.disentangle_hidden)
+        if self.use_disentangle:
+            self.inv_proj = nn.Sequential(
+                nn.Linear(hid, self.disentangle_hidden),
+                nn.ReLU(),
+            )
+            self.dom_proj = nn.Sequential(
+                nn.Linear(hid, self.disentangle_hidden),
+                nn.ReLU(),
+            )
+            pred_hid = self.disentangle_hidden
+        else:
+            self.inv_proj = None
+            self.dom_proj = None
+            pred_hid = hid
+
+        self.shared_head = nn.Linear(pred_hid, 1)
         use_calib_mlp = bool(use_calib_mlp)
-        calib_hid = int(calib_mlp_hid) if int(calib_mlp_hid) > 0 else int(hid)
+        calib_hid = int(calib_mlp_hid) if int(calib_mlp_hid) > 0 else int(pred_hid)
         calib_drop = float(calib_mlp_dropout) if float(calib_mlp_dropout) >= 0 else float(dropout)
         if use_calib_mlp:
             self.calib_tgt = nn.Sequential(
-                nn.Linear(hid, calib_hid),
+                nn.Linear(pred_hid, calib_hid),
                 nn.ReLU(),
                 nn.Dropout(calib_drop),
                 nn.Linear(calib_hid, 1),
             )
             self.calib_src = nn.Sequential(
-                nn.Linear(hid, calib_hid),
+                nn.Linear(pred_hid, calib_hid),
                 nn.ReLU(),
                 nn.Dropout(calib_drop),
                 nn.Linear(calib_hid, 1),
             )
         else:
-            self.calib_tgt = nn.Linear(hid, 1)
-            self.calib_src = nn.Linear(hid, 1)
+            self.calib_tgt = nn.Linear(pred_hid, 1)
+            self.calib_src = nn.Linear(pred_hid, 1)
         self.disable_domain_calibration = bool(disable_domain_calibration)
         self.use_topology_expert = bool(use_topology_expert)
+        self.calib_branch_scale = max(0.0, float(calib_branch_scale))
+        self.topo_branch_scale = max(0.0, float(topo_branch_scale))
         self.num_topologies = max(1, int(num_topologies))
+        self.topo_moe_k = max(1, int(topo_moe_k))
+        self.topo_moe_temp = max(1e-3, float(topo_moe_temp))
         if self.use_topology_expert:
             topo_dim = max(4, int(topology_expert_dim))
             topo_hid = max(8, int(topology_expert_hidden))
             self.topo_emb = nn.Embedding(self.num_topologies, topo_dim)
-            self.topo_res_tgt = nn.Sequential(
-                nn.Linear(hid + topo_dim, topo_hid),
-                nn.ReLU(),
-                nn.Linear(topo_hid, 1),
-            )
-            self.topo_res_src = nn.Sequential(
-                nn.Linear(hid + topo_dim, topo_hid),
-                nn.ReLU(),
-                nn.Linear(topo_hid, 1),
-            )
+            topo_in_dim = pred_hid + topo_dim
+            if self.topo_moe_k > 1:
+                self.topo_gate_tgt = nn.Linear(topo_in_dim, self.topo_moe_k)
+                self.topo_gate_src = nn.Linear(topo_in_dim, self.topo_moe_k)
+                self.topo_experts_tgt = nn.ModuleList(
+                    [
+                        nn.Sequential(
+                            nn.Linear(topo_in_dim, topo_hid),
+                            nn.ReLU(),
+                            nn.Linear(topo_hid, 1),
+                        )
+                        for _ in range(self.topo_moe_k)
+                    ]
+                )
+                self.topo_experts_src = nn.ModuleList(
+                    [
+                        nn.Sequential(
+                            nn.Linear(topo_in_dim, topo_hid),
+                            nn.ReLU(),
+                            nn.Linear(topo_hid, 1),
+                        )
+                        for _ in range(self.topo_moe_k)
+                    ]
+                )
+                self.topo_res_tgt = None
+                self.topo_res_src = None
+            else:
+                self.topo_res_tgt = nn.Sequential(
+                    nn.Linear(topo_in_dim, topo_hid),
+                    nn.ReLU(),
+                    nn.Linear(topo_hid, 1),
+                )
+                self.topo_res_src = nn.Sequential(
+                    nn.Linear(topo_in_dim, topo_hid),
+                    nn.ReLU(),
+                    nn.Linear(topo_hid, 1),
+                )
+                self.topo_gate_tgt = None
+                self.topo_gate_src = None
+                self.topo_experts_tgt = None
+                self.topo_experts_src = None
+        else:
+            self.topo_emb = None
+            self.topo_res_tgt = None
+            self.topo_res_src = None
+            self.topo_gate_tgt = None
+            self.topo_gate_src = None
+            self.topo_experts_tgt = None
+            self.topo_experts_src = None
 
-    def forward(self, x, z, node="tgt", topo_ids=None):
+    def encode_hidden(self, x, z):
         if z.dim() == 1:
             z = z.unsqueeze(0)
-        h = th.cat([x, z], dim=1)
-        h = self.backbone(h)
-        pred = self.shared_head(h).squeeze(-1)
+        h_backbone = self.backbone(th.cat([x, z], dim=1))
+        if self.use_disentangle:
+            h_inv = self.inv_proj(h_backbone)
+            h_dom = self.dom_proj(h_backbone)
+            h_shared = h_inv
+            h_calib = h_dom
+            h_topo = h_dom
+        else:
+            h_inv = None
+            h_dom = None
+            h_shared = h_backbone
+            h_calib = h_backbone
+            h_topo = h_backbone
+        return {
+            "h_backbone": h_backbone,
+            "h_inv": h_inv,
+            "h_dom": h_dom,
+            "h_shared": h_shared,
+            "h_calib": h_calib,
+            "h_topo": h_topo,
+        }
+
+    def _apply_topology_residual(self, h_topo, topo_ids, node):
+        if (not self.use_topology_expert) or topo_ids is None:
+            return th.zeros((h_topo.shape[0],), device=h_topo.device, dtype=h_topo.dtype)
+        topo_ids = topo_ids.to(device=h_topo.device, dtype=th.long).clamp_(0, self.num_topologies - 1)
+        topo_feat = self.topo_emb(topo_ids)
+        topo_in = th.cat([h_topo, topo_feat], dim=1)
+        if self.topo_moe_k > 1:
+            if node == "tgt":
+                gate_logits = self.topo_gate_tgt(topo_in) / self.topo_moe_temp
+                gate = th.softmax(gate_logits, dim=1)
+                exp_out = th.stack([m(topo_in).squeeze(-1) for m in self.topo_experts_tgt], dim=1)
+            elif node == "src":
+                gate_logits = self.topo_gate_src(topo_in) / self.topo_moe_temp
+                gate = th.softmax(gate_logits, dim=1)
+                exp_out = th.stack([m(topo_in).squeeze(-1) for m in self.topo_experts_src], dim=1)
+            else:
+                raise ValueError(f"Unknown node type: {node}")
+            res = (gate * exp_out).sum(dim=1)
+        elif node == "tgt":
+            res = self.topo_res_tgt(topo_in).squeeze(-1)
+        elif node == "src":
+            res = self.topo_res_src(topo_in).squeeze(-1)
+        else:
+            raise ValueError(f"Unknown node type: {node}")
+        return self.topo_branch_scale * res
+
+    def forward_with_aux(self, x, z, node="tgt", topo_ids=None):
+        aux = self.encode_hidden(x, z)
+        h_shared = aux["h_shared"]
+        h_calib = aux["h_calib"]
+        h_topo = aux["h_topo"]
+
+        pred = self.shared_head(h_shared).squeeze(-1)
         if not self.disable_domain_calibration:
             if node == "tgt":
-                pred = pred + self.calib_tgt(h).squeeze(-1)
+                pred = pred + self.calib_branch_scale * self.calib_tgt(h_calib).squeeze(-1)
             elif node == "src":
-                pred = pred + self.calib_src(h).squeeze(-1)
+                pred = pred + self.calib_branch_scale * self.calib_src(h_calib).squeeze(-1)
             else:
                 raise ValueError(f"Unknown node type: {node}")
         elif node not in ("tgt", "src"):
             raise ValueError(f"Unknown node type: {node}")
-        if self.use_topology_expert and topo_ids is not None:
-            topo_ids = topo_ids.to(device=h.device, dtype=th.long).clamp_(0, self.num_topologies - 1)
-            topo_feat = self.topo_emb(topo_ids)
-            topo_in = th.cat([h, topo_feat], dim=1)
-            if node == "tgt":
-                pred = pred + self.topo_res_tgt(topo_in).squeeze(-1)
-            elif node == "src":
-                pred = pred + self.topo_res_src(topo_in).squeeze(-1)
+        pred = pred + self._apply_topology_residual(h_topo, topo_ids, node)
+        return pred, aux
+
+    def forward(self, x, z, node="tgt", topo_ids=None):
+        pred, _ = self.forward_with_aux(x, z, node=node, topo_ids=topo_ids)
         return pred
 
 
@@ -1539,6 +1675,17 @@ def train_balanced_sep_mlp_shared_calib(options, seed):
     use_topology_expert = bool(getattr(options, "use_topology_expert", False))
     topology_expert_dim = int(getattr(options, "topology_expert_dim", 16))
     topology_expert_hidden = int(getattr(options, "topology_expert_hidden", 64))
+    v7_adaptive_src_gate = bool(getattr(options, "v7_adaptive_src_gate", False))
+    v7_gate_temp = max(1e-3, float(getattr(options, "v7_gate_temp", 0.5)))
+    v7_gate_floor = float(getattr(options, "v7_gate_floor", 0.2))
+    v7_gate_floor = min(max(v7_gate_floor, 0.0), 1.0)
+    v7_disentangle = bool(getattr(options, "v7_disentangle", False))
+    v7_disentangle_hidden = int(getattr(options, "v7_disentangle_hidden", 0))
+    v7_disentangle_orth_w = max(0.0, float(getattr(options, "v7_disentangle_orth_w", 0.0)))
+    v7_topo_moe_k = max(1, int(getattr(options, "v7_topo_moe_k", 1)))
+    v7_topo_moe_temp = max(1e-3, float(getattr(options, "v7_topo_moe_temp", 1.0)))
+    v7_calib_scale = max(0.0, float(getattr(options, "v7_calib_scale", 1.0)))
+    v7_topo_scale = max(0.0, float(getattr(options, "v7_topo_scale", 1.0)))
     num_topologies = max(1, len(topo_to_id))
     z_dim = _effective_z_dim(design_dim, hgat_dual_readout, hgat_dual_merge)
     print(f"[Info] HGAT NET parasitic feature enrich: {enrich_parasitic_net_feat}")
@@ -1557,6 +1704,19 @@ def train_balanced_sep_mlp_shared_calib(options, seed):
         f"[Info] Topology expert: {'enabled' if use_topology_expert else 'disabled'}"
         + (f" (num_topologies={num_topologies}, emb={topology_expert_dim}, hid={topology_expert_hidden})" if use_topology_expert else "")
     )
+    print(
+        f"[Info] V7 adaptive src gate: {'enabled' if v7_adaptive_src_gate else 'disabled'}"
+        + (f" (temp={v7_gate_temp:.3f}, floor={v7_gate_floor:.3f})" if v7_adaptive_src_gate else "")
+    )
+    print(
+        f"[Info] V7 disentangle: {'enabled' if v7_disentangle else 'disabled'}"
+        + (f" (hid={v7_disentangle_hidden if v7_disentangle_hidden > 0 else hgat_hid}, orth_w={v7_disentangle_orth_w:.4f})" if v7_disentangle else "")
+    )
+    print(
+        f"[Info] V7 topology MoE: {'enabled' if (use_topology_expert and v7_topo_moe_k > 1) else 'disabled'}"
+        + (f" (k={v7_topo_moe_k}, temp={v7_topo_moe_temp:.3f})" if (use_topology_expert and v7_topo_moe_k > 1) else "")
+    )
+    print(f"[Info] V7 branch scales: calib={v7_calib_scale:.3f}, topo={v7_topo_scale:.3f}")
     if tgt_group_w_info is not None:
         print(
             "[Info] Target group reweight enabled: "
@@ -1598,6 +1758,12 @@ def train_balanced_sep_mlp_shared_calib(options, seed):
         topology_expert_dim=topology_expert_dim,
         topology_expert_hidden=topology_expert_hidden,
         disable_domain_calibration=disable_domain_calibration,
+        use_disentangle=v7_disentangle,
+        disentangle_hidden=v7_disentangle_hidden,
+        topo_moe_k=v7_topo_moe_k,
+        topo_moe_temp=v7_topo_moe_temp,
+        calib_branch_scale=v7_calib_scale,
+        topo_branch_scale=v7_topo_scale,
     ).to(device)
 
     maybe_load_hgat_encoder_checkpoint(enc, options, device)
@@ -1787,6 +1953,12 @@ def train_balanced_sep_mlp_shared_calib(options, seed):
             topology_expert_dim=topology_expert_dim,
             topology_expert_hidden=topology_expert_hidden,
             disable_domain_calibration=disable_domain_calibration,
+            use_disentangle=v7_disentangle,
+            disentangle_hidden=v7_disentangle_hidden,
+            topo_moe_k=v7_topo_moe_k,
+            topo_moe_temp=v7_topo_moe_temp,
+            calib_branch_scale=v7_calib_scale,
+            topo_branch_scale=v7_topo_scale,
         ).to(device)
         for p in enc_eval.parameters():
             p.requires_grad = False
@@ -1856,13 +2028,27 @@ def train_balanced_sep_mlp_shared_calib(options, seed):
                     zb_tgt = zb_tgt + th.randn_like(zb_tgt) * z_noise_std
                     if hgat_l2_norm:
                         zb_tgt = th.nn.functional.normalize(zb_tgt, p=2, dim=1)
-                pred_tgt = model(xb_tgt, zb_tgt, node="tgt", topo_ids=topo_ids_tgt)
+                pred_tgt, aux_tgt = model.forward_with_aux(xb_tgt, zb_tgt, node="tgt", topo_ids=topo_ids_tgt)
                 loss_tgt = compute_loss_with_optional_weights(
                     loss_fn,
                     pred_tgt,
                     yb_tgt,
                     sample_w=sample_w_tgt if tgt_group_w_info is not None else None,
                 )
+                if v7_disentangle and aux_tgt["h_inv"] is not None and aux_tgt["h_dom"] is not None:
+                    inv_t = th.nn.functional.normalize(aux_tgt["h_inv"], p=2, dim=1)
+                    dom_t = th.nn.functional.normalize(aux_tgt["h_dom"], p=2, dim=1)
+                    orth_tgt = (inv_t * dom_t).sum(dim=1).pow(2).mean()
+                else:
+                    orth_tgt = th.zeros((), device=pred_tgt.device, dtype=pred_tgt.dtype)
+
+            orth_weighted_loss_sum = orth_tgt * tgt_n
+            orth_n_sum = tgt_n
+            if v7_adaptive_src_gate:
+                tgt_ref = aux_tgt["h_shared"].detach()
+                tgt_center = tgt_ref.mean(dim=0, keepdim=True)
+            else:
+                tgt_center = None
 
             for _ in range(max(1, options.sample_45_num)):
                 try:
@@ -1899,8 +2085,21 @@ def train_balanced_sep_mlp_shared_calib(options, seed):
                         zb_src = zb_src + th.randn_like(zb_src) * z_noise_std
                         if hgat_l2_norm:
                             zb_src = th.nn.functional.normalize(zb_src, p=2, dim=1)
-                    pred_src = model(xb_src, zb_src, node="src", topo_ids=topo_ids_src)
-                    loss_src = compute_loss_with_optional_weights(loss_fn, pred_src, yb_src, sample_w=None)
+                    pred_src, aux_src = model.forward_with_aux(xb_src, zb_src, node="src", topo_ids=topo_ids_src)
+                    if tgt_center is not None:
+                        src_ref = th.nn.functional.normalize(aux_src["h_shared"], p=2, dim=1)
+                        center_ref = th.nn.functional.normalize(tgt_center, p=2, dim=1).expand(src_ref.shape[0], -1)
+                        sim = (src_ref * center_ref).sum(dim=1)
+                        gate = v7_gate_floor + (1.0 - v7_gate_floor) * th.sigmoid(sim / v7_gate_temp)
+                    else:
+                        gate = None
+                    loss_src = compute_loss_with_optional_weights(loss_fn, pred_src, yb_src, sample_w=gate)
+                    if v7_disentangle and aux_src["h_inv"] is not None and aux_src["h_dom"] is not None:
+                        inv_s = th.nn.functional.normalize(aux_src["h_inv"], p=2, dim=1)
+                        dom_s = th.nn.functional.normalize(aux_src["h_dom"], p=2, dim=1)
+                        orth_src = (inv_s * dom_s).sum(dim=1).pow(2).mean()
+                        orth_weighted_loss_sum = orth_weighted_loss_sum + (orth_src * src_n)
+                        orth_n_sum += src_n
                 src_weighted_loss_sum = src_weighted_loss_sum + (loss_src * src_n)
                 src_n_sum += src_n
 
@@ -1909,6 +2108,10 @@ def train_balanced_sep_mlp_shared_calib(options, seed):
                 total_loss_batch = (
                     target_loss_weight * loss_tgt * tgt_n + src_weight_epoch * src_weighted_loss_sum
                 ) / denom
+                if v7_disentangle_orth_w > 0:
+                    total_loss_batch = total_loss_batch + v7_disentangle_orth_w * (
+                        orth_weighted_loss_sum / max(1, orth_n_sum)
+                    )
 
             optimizer.zero_grad()
             scaler.scale(total_loss_batch).backward()
@@ -2303,8 +2506,36 @@ def _resolve_model_work_dir(model_saving_dir, script_stem):
     return final_dir, work_dir
 
 
+def _parse_v7_args(argv):
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--v7_adaptive_src_gate", action="store_true",
+                        help="enable sample-level source gating by similarity to target hidden centroid")
+    parser.add_argument("--v7_gate_temp", type=float, default=0.5,
+                        help="temperature in source gate sigmoid")
+    parser.add_argument("--v7_gate_floor", type=float, default=0.2,
+                        help="minimum source sample weight when adaptive gate is enabled")
+    parser.add_argument("--v7_disentangle", action="store_true",
+                        help="split hidden into invariant/domain-specific branches")
+    parser.add_argument("--v7_disentangle_hidden", type=int, default=0,
+                        help="hidden dim for disentangled branches (<=0 follows hidden_dim)")
+    parser.add_argument("--v7_disentangle_orth_w", type=float, default=0.0,
+                        help="orthogonality regularization weight between invariant/domain features")
+    parser.add_argument("--v7_topo_moe_k", type=int, default=1,
+                        help="number of topology experts per domain (1=single residual head)")
+    parser.add_argument("--v7_topo_moe_temp", type=float, default=1.0,
+                        help="softmax temperature for topology MoE gate")
+    parser.add_argument("--v7_calib_scale", type=float, default=1.0,
+                        help="scale factor for domain calibration branch output")
+    parser.add_argument("--v7_topo_scale", type=float, default=1.0,
+                        help="scale factor for topology residual branch output")
+    return parser.parse_known_args(argv)
+
+
 if __name__ == "__main__":
-    options = get_options()
+    v7_opts, base_argv = _parse_v7_args(sys.argv[1:])
+    options = get_options(base_argv)
+    for k, v in vars(v7_opts).items():
+        setattr(options, k, v)
     seed = options.seed
     th.manual_seed(seed)
     if th.cuda.is_available():

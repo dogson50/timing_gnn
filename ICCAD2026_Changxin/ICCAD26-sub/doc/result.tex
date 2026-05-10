@@ -1,0 +1,69 @@
+\section{Experiments}
+\label{sec:results}
+
+\subsection{Dataset and Protocol}
+We use a table-group split with explicit train/validation/test partitions.
+The target-domain split statistics are:
+Train groups = 25 (1225 arcs), Validation groups = 25 (1225 arcs), Test groups = 104 (5094 arcs).
+The split is intentionally OOD-style: test covers substantially more unseen table groups and cell/topology combinations.
+
+Unless specified otherwise, we use:
+batch size $=2048$, learning rate $=2\times 10^{-3}$, plateau scheduler, source-loss annealing, and 3 seeds
+(\texttt{9294, 9295, 9296}).
+
+\subsection{Main Ablation (Mean$\pm$Std over 3 Seeds)}
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcc}
+\toprule
+Method & Val $R^2$ & Test $R^2$ \\
+\midrule
+Baseline (shared linear) & 0.8554$\pm$0.0024 & 0.8496$\pm$0.0045 \\
+TCDR (16,64) & 0.8859$\pm$0.0082 & 0.8888$\pm$0.0056 \\
+TCDR (16,96) & 0.8843$\pm$0.0097 & 0.8860$\pm$0.0061 \\
+TCDR (32,64) & \textbf{0.8931$\pm$0.0098} & \textbf{0.8951$\pm$0.0099} \\
+\bottomrule
+\end{tabular}
+\caption{Core model comparison on table-group split.}
+\label{tab:core_ablation}
+\end{table}
+
+TCDR variants consistently outperform the baseline by a clear margin on both validation and test sets.
+The best mean test performance in this round is from TCDR (32,64), improving test $R^2$ by +0.0455 over baseline.
+
+\subsection{Component Analysis}
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lcc}
+\toprule
+Method & Val $R^2$ & Test $R^2$ \\
+\midrule
+TCDR (16,64) & 0.8859$\pm$0.0082 & 0.8888$\pm$0.0056 \\
++ dual readout (mean) & 0.8859$\pm$0.0082 & 0.8888$\pm$0.0056 \\
++ calibration MLP & \textbf{0.8951$\pm$0.0104} & 0.8930$\pm$0.0070 \\
++ parasitic\_replace & 0.8716$\pm$0.0116 & 0.8842$\pm$0.0108 \\
+\bottomrule
+\end{tabular}
+\caption{Component-level ablation around TCDR (16,64).}
+\label{tab:component_ablation}
+\end{table}
+
+Observations:
+\begin{enumerate}
+  \item TCDR itself contributes the major gain versus baseline.
+  \item Dual readout (mean merge) brings no measurable improvement in this setup.
+  \item Calibration MLP slightly improves average test $R^2$ but with higher variance.
+  \item Replacing parasitic features (\texttt{parasitic\_replace}) weakens robustness.
+\end{enumerate}
+
+\subsection{Current Choice for Next Iteration}
+For follow-up experiments and paper writing, we keep two tracks:
+\begin{itemize}
+  \item \textbf{Stable track}: TCDR (16,64), lower variance and strong average results.
+  \item \textbf{Peak track}: TCDR (32,64), best mean test score in this round.
+\end{itemize}
+Further experiments will expand seeds and include stricter statistical reporting before final submission.

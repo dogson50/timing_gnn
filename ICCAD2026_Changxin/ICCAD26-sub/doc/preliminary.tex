@@ -1,0 +1,51 @@
+\section{Preliminaries}
+In this section, we briefly introduce the background of standard-cell timing characterization, the heterogeneous graph formulation used in this work, and the cross-technology-node transfer learning setting.
+
+\subsection{Standard-Cell Timing Characterization}
+
+Standard-cell timing characterization aims to construct timing models for each cell under a range of input slew and output load conditions, so that downstream static timing analysis (STA) can efficiently estimate circuit delay and transition behavior \cite{bhasker2009sta,garyfallou2021gate}. In industrial library development, these timing models are commonly obtained from extensive transistor-level simulation and are stored in lookup-table based formats such as nonlinear delay models or current-source based models \cite{amelifard2008csm,kaur2014ecsm}. Although such characterization provides high accuracy, its computational cost is substantial, especially for advanced technology nodes with stronger parasitic effects and more complicated device behaviors \cite{charafeddine2017curve,garyfallou2022ml}.
+
+Recent learning-based approaches attempt to replace or accelerate exhaustive simulation by directly predicting cell timing quantities from circuit features \cite{klemme2021reliability,ebrahimipour2020aadam,ma2024gnn,liu2025gtncell}. Let $y$ denote the target timing quantity of interest, such as cell delay or output transition, and let $\mathbf{x}$ denote the circuit representation of a standard cell under a specific operating condition. The learning objective can then be written as
+\begin{equation}
+    \hat{y} = f_{\theta}(\mathbf{x}, s, l),
+\end{equation}
+where $f_{\theta}$ is a parameterized predictor, and $s$ and $l$ denote the input slew and output load, respectively. In this work, instead of using handcrafted features or purely gate-level descriptions, we encode each standard cell with a heterogeneous circuit graph to better preserve both structural and parasitic information.
+
+\subsection{Heterogeneous Graph Representation of Standard Cells}
+
+A standard cell can be naturally modeled as a graph because its internal devices and nets form a structured circuit topology. Prior graph-based characterization works have shown that explicitly modeling circuit connectivity improves prediction performance compared with conventional vectorized features \cite{ma2024gnn,ye2024aging,liu2025gtncell}. Moreover, recent studies suggest that parasitic-aware heterogeneous graph modeling is especially beneficial for advanced-node timing characterization \cite{cheng2024hgat}.
+
+Following this intuition, we represent each standard cell as a heterogeneous graph
+\begin{equation}
+    \mathcal{G} = (\mathcal{V}, \mathcal{E}, \phi, \psi),
+\end{equation}
+where $\mathcal{V}$ and $\mathcal{E}$ are the node and edge sets, $\phi: \mathcal{V} \rightarrow \mathcal{T}_v$ maps each node to its node type, and $\psi: \mathcal{E} \rightarrow \mathcal{T}_e$ maps each edge to its edge type \cite{yang2021hgat}. In our setting, node types may include transistors, resistors, capacitors, and ports, while edge types describe device connectivity and interaction patterns inside the circuit. Each node $v \in \mathcal{V}$ is associated with a feature vector $\mathbf{h}_v$ that may encode device attributes, topological information, or process-related electrical parameters.
+
+Compared with homogeneous graph representations, heterogeneous graphs provide a more faithful abstraction of standard-cell circuits because different device categories play distinct roles in timing generation and propagation. In particular, explicitly representing parasitic RC components allows the model to preserve process-dependent physical effects that are often critical in advanced-node libraries \cite{cheng2024hgat}. This representation also provides a natural basis for separating structure-related information from process-related information in later transfer learning stages.
+
+\subsection{Cross-Technology-Node Transfer Learning}
+
+The goal of transfer learning is to leverage knowledge learned from a source domain to improve learning performance on a target domain with limited data \cite{weiss2016survey,zhuang2021survey}. In our problem, the source domain corresponds to a mature technology node with abundant labeled characterization data, while the target domain corresponds to an advanced technology node with only a small amount of labeled data \cite{shrestha2024arrival,amuru2024pvt,zhang2024disentangle}.
+
+Formally, let the source-domain dataset be
+\begin{equation}
+    \mathcal{D}_s = \{(\mathcal{G}_i^s, s_i^s, l_i^s, y_i^s)\}_{i=1}^{N_s},
+\end{equation}
+and the target-domain dataset be
+\begin{equation}
+    \mathcal{D}_t = \{(\mathcal{G}_j^t, s_j^t, l_j^t, y_j^t)\}_{j=1}^{N_t},
+\end{equation}
+where $N_s \gg N_t$ in the low-resource target-node setting. Although the source and target domains share the same prediction task, their data distributions are generally different due to process-node dependent electrical characteristics. That is,
+\begin{equation}
+    P_s(\mathcal{G}, s, l, y) \neq P_t(\mathcal{G}, s, l, y).
+\end{equation}
+
+A key observation in cross-technology-node timing prediction is that not all information changes equally across nodes. The logical topology and basic circuit organization of the same cell family are often largely preserved, whereas physical properties such as parasitic values, threshold voltages, and other process-dependent effects may shift significantly across technology nodes \cite{zhang2024disentangle,tang2025knowledge}. Therefore, an effective transfer strategy should preserve node-invariant structural knowledge while adapting node-dependent physical representations. This observation motivates the disentanglement and alignment strategy adopted in our framework.
+
+\subsection{Learning Objective}
+
+Given a source dataset $\mathcal{D}_s$ and a small target dataset $\mathcal{D}_t$, our objective is to learn a predictor that achieves high timing prediction accuracy on the target technology node. In general, the training loss can be written as
+\begin{equation}
+    \mathcal{L} = \mathcal{L}_{\mathrm{pred}} + \lambda_1 \mathcal{L}_{\mathrm{transfer}} + \lambda_2 \mathcal{L}_{\mathrm{reg}},
+\end{equation}
+where $\mathcal{L}_{\mathrm{pred}}$ denotes the supervised timing prediction loss, $\mathcal{L}_{\mathrm{transfer}}$ denotes a transfer regularization term for reducing the domain gap, and $\mathcal{L}_{\mathrm{reg}}$ denotes additional regularization terms. In our method, $\mathcal{L}_{\mathrm{transfer}}$ will be instantiated through feature disentanglement and cross-domain alignment, which will be detailed in Section~\ref{sec:algorithm}.

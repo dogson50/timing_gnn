@@ -1,0 +1,79 @@
+\documentclass[12pt,a4paper]{ctexart}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{hyperref}
+\usepackage{xurl}
+
+\title{第四次组会：Step5a-HGAT 本周实验总结}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{本周工作概览}
+本周围绕 \path{train_balanced_sampling_sep_mlp_shared_calib_step5a_feat_opt.py} 完成了以下工作：
+\begin{enumerate}
+  \item 训练流程完善：补充对测试集的评估。
+  \item 训练策略调参：比较了 HGAT 冻结/解冻、源域损失退火、学习率调度、图特征增强（含 \texttt{parasitic\_replace/append}）。
+  \item 架构准备：新增可回退开关（默认关闭），包括双读出（global+arc）和校准头 MLP，便于后续结构对照实验。
+  \item 方案裁剪：与学长讨论后，伪标签路线暂时弃用（当前所有可用样本均有标签，优先全监督方案）。
+\end{enumerate}
+
+\section{实验结果总表（仅 cell\_type 划分）}
+数据来源：\path{copilot_train_logs/train_balanced_sampling_sep_mlp_shared_calib_step5a_feat_opt.log}。  
+本表只保留 \textbf{cell\_type OOD 划分}实验；\textbf{random 划分中 test\_r2>0.9 的结果不纳入本次对比}。  
+\texttt{train\_r2} 取 \texttt{Best epoch} 对应训练轮次（即 \texttt{e(best\_epoch-1)}）的训练集 \(R^2\)。
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4.5pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabularx}{\textwidth}{c >{\raggedright\arraybackslash}X c c c c c}
+\toprule
+ID & 方法设置（cell\_type） & Best epoch & train\_r2 & val\_r2 & test\_r2 & test来源 \\
+\midrule
+C1 & \texttt{freeze\_celltype\_gen1}（冻结HGAT，基础特征） & 53 & 0.9130 & 0.8925 & 0.7906 & periodic \\
+C2 & \texttt{freeze\_celltype\_gen2\_base}（gen2基础） & 74 & 0.8990 & 0.8866 & 0.8101 & periodic \\
+C3 & \texttt{freeze\_celltype\_gen2\_cap07}（gen2 + cap=0.7） & 76 & 0.9020 & 0.8841 & 0.8095 & periodic \\
+C4 & \texttt{methodD\_celltype\_robust}（稳健训练策略） & 58 & 0.9060 & 0.8931 & 0.7918 & final \\
+C5 & \texttt{methodE\_celltype\_srcstrong}（源域权重更强） & 53 & 0.8930 & 0.8912 & 0.8022 & final \\
+C6 & \texttt{methodF\_celltype\_balanced}（平衡方案） & 53 & 0.8620 & 0.8520 & 0.8309 & final \\
+C7 & \texttt{expA\_tgt\_only}（只用目标域监督，source loss=0） & 20 & -- & 0.8739 & 0.7370 & final \\
+C8 & \texttt{expB\_half\_share}（半共享骨干，src/tgt分backbone） & 20 & -- & 0.8664 & 0.7539 & best-epoch test \\
+C9 & \texttt{expC\_src2tgt\_curriculum}（源域先强后关） & 20 & -- & 0.8532 & 0.8218 & final \\
+\bottomrule
+\end{tabularx}
+\caption{cell\_type OOD 划分下的方法对比（已剔除 random 结果）}
+\end{table}
+
+\textbf{说明：}
+\begin{itemize}
+  \item \texttt{final}：训练结束后载入 \texttt{ckpt\_best} 在测试集进行最终评估。
+  \item \texttt{periodic}：训练过程中按固定间隔评估测试集（旧日志阶段未必包含最终测试）。
+  \item \texttt{best-epoch test}：在最佳验证轮次对应的当轮测试评估（非训练末尾单独 FinalTest）。
+  \item C7--C9 为本周新增的“结构判定三组实验”；其中日志未打印 train\_r2，故记为 \texttt{--}。
+\end{itemize}
+
+\section{关键观察}
+\begin{enumerate}
+  \item \textbf{当前应以 cell\_type 结果为主结论}：random 划分的高分（test\_r2 > 0.9）不能代表 cell\_type OOD 泛化能力。
+  \item \textbf{parasitic\_replace 出现“val升、test降”}：例如给出的对照中，val\_r2 从 0.8520 升到 0.8875，但 test\_r2 从 0.8309 降到 0.7988，说明该改动可能在 cell\_type OOD 下引入了更强分布偏置。
+  \item \textbf{结构判定实验给出明确方向}：C7 的 test\_r2=0.7370，C8 的 test\_r2=0.7539，C9 的 test\_r2=0.8218。说明“完全去掉源域”或“仅改半共享结构”都不够，而“源域先强后关”更有效。
+  \item \textbf{cell\_type 下最优 test 仍在 0.83 左右}：当前最佳仍为 C6（test\_r2=0.8309），C9 已接近（0.8218），后续可重点沿 curriculum 路线继续优化。
+\end{enumerate}
+
+\section{为什么会出现 val 与 test 不同步？}
+在 cell\_type OOD 场景下，\textbf{val 提升但 test 下降}或\textbf{val 较低但 test 较高}都可能出现，主要由以下因素共同导致：
+\begin{enumerate}
+  \item \textbf{验证集与测试集门型分布不同}：按 \texttt{cell\_type} 划分后，val/test 对应不同未见门型组合，方法可能只适配其中一个子分布。
+  \item \textbf{R\(^2\) 受目标方差影响}：不同子集目标方差不同时，同等绝对误差对应的 \(R^2\) 幅度会不同。
+  \item \textbf{早停与调度器以 val 为驱动}：当 val 是“偏难”子分布时，模型会在该子分布上被过早或过度引导，未必对应最佳 test 泛化点。
+\end{enumerate}
+
+
+
+\end{document}

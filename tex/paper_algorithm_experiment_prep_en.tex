@@ -1,0 +1,89 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xurl}
+
+\title{Step5a-HGAT Paper Prep: Algorithm and Experiment Snapshot}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Goal}
+This draft consolidates algorithm and ablation evidence before full paper writing.
+Our focus is to verify whether the proposed topology-conditioned architecture improves OOD generalization under table-group split.
+
+\section{Algorithm Core: TCDR}
+We use a shared regression backbone and add topology-conditioned dual residual experts:
+\begin{itemize}
+  \item shared base head captures cross-domain common trends;
+  \item topology embedding conditions two domain-specific residual heads (src/tgt);
+  \item final prediction = base prediction + domain residual.
+\end{itemize}
+
+This decouples universal delay behavior from topology/domain-specific bias.
+
+\section{Dataset and Protocol}
+Primary dataset for paper tables:
+\begin{center}
+\path{output/dataset_table_group_1166_with_test.pkl}
+\end{center}
+
+Target split statistics:
+Train groups = 25 (1225 samples), Val groups = 25 (1225 samples), Test groups = 104 (5094 samples).
+
+Unified training setup in this round:
+batch size 2048, learning rate $2\times10^{-3}$, frozen HGAT encoder, parasitic append\_split features, 3 seeds (9294/9295/9296).
+
+\section{Main Results (3-seed Mean$\pm$Std)}
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Method & Val R2 (mean+/-std) & Test R2 (mean+/-std) & Delta Test vs Baseline \\
+\midrule
+Baseline (shared linear) & 0.8554+/-0.0024 & 0.8496+/-0.0045 & +0.0000 \\
+TCDR (16,64) & 0.8859+/-0.0082 & 0.8888+/-0.0056 & +0.0393 \\
+TCDR (16,96) & 0.8843+/-0.0097 & 0.8860+/-0.0061 & +0.0364 \\
+TCDR (32,64) & \textbf{0.8931+/-0.0098} & \textbf{0.8951+/-0.0099} & \textbf{+0.0455} \\
+\bottomrule
+\end{tabular}
+\caption{Core architecture comparison under table-group split.}
+\end{table}
+
+\section{Component Ablation around TCDR(16,64)}
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lcc}
+\toprule
+Method & Val R2 (mean+/-std) & Test R2 (mean+/-std) \\
+\midrule
+TCDR(16,64) & 0.8859+/-0.0082 & 0.8888+/-0.0056 \\
++ dual\_readout(mean) & 0.8859+/-0.0082 & 0.8888+/-0.0056 \\
++ calib\_mlp & \textbf{0.8951+/-0.0104} & 0.8930+/-0.0070 \\
++ parasitic\_replace & 0.8716+/-0.0116 & 0.8842+/-0.0108 \\
+\bottomrule
+\end{tabular}
+\caption{Component-level ablation results.}
+\end{table}
+
+\section{Takeaways}
+\begin{itemize}
+  \item TCDR delivers a clear and consistent gain over baseline on OOD split.
+  \item TCDR(32,64) is best in mean test R2 for this round.
+  \item TCDR(16,64) remains a strong and simpler stable candidate.
+  \item dual\_readout gives negligible gain in current setting; parasitic\_replace is less robust.
+\end{itemize}
+
+\section{Artifact Files}
+\begin{itemize}
+  \item Per-run logs and metrics: \path{copilot_train_logs/paper_main_ablation_runs.csv}
+  \item Aggregated summary: \path{copilot_train_logs/paper_main_ablation_summary.csv}
+  \item Paper table markdown: \path{copilot_train_logs/paper_main_ablation_table.md}
+\end{itemize}
+
+\end{document}

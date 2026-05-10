@@ -1,0 +1,47 @@
+\section{Algorithms}
+\label{sec:algorithm}
+
+\subsection{Problem Setup}
+We study cross-node delay prediction from source technology libraries (Nangate45) to target technology libraries (ASAP7).
+Given per-arc handcrafted features $\mathbf{x}$ and graph-derived design embedding $\mathbf{z}$, the model predicts normalized delay $y$.
+The key challenge is distribution shift across table groups, cell types, and topology patterns.
+
+\subsection{Backbone with Topology-Conditioned Dual Residual (TCDR)}
+The shared backbone first produces latent representation
+\begin{equation}
+\mathbf{h} = f_{\theta}([\mathbf{x};\mathbf{z}]).
+\end{equation}
+A shared linear regressor gives base prediction:
+\begin{equation}
+\hat{y}_{\text{base}} = \mathbf{w}^{\top}\mathbf{h} + b.
+\end{equation}
+
+To improve OOD generalization, we introduce a topology-conditioned residual expert.
+For each sample, topology group ID $t$ is mapped to embedding $\mathbf{e}_t$.
+Domain-specific residuals are modeled as
+\begin{equation}
+\Delta_{\text{src}} = g_{\phi_{\text{src}}}([\mathbf{h};\mathbf{e}_t]),\quad
+\Delta_{\text{tgt}} = g_{\phi_{\text{tgt}}}([\mathbf{h};\mathbf{e}_t]).
+\end{equation}
+Final prediction becomes
+\begin{equation}
+\hat{y}=
+\begin{cases}
+\hat{y}_{\text{base}} + \Delta_{\text{src}}, & \text{source domain},\\
+\hat{y}_{\text{base}} + \Delta_{\text{tgt}}, & \text{target domain}.
+\end{cases}
+\end{equation}
+
+Compared with a pure shared head, TCDR decouples universal delay trends (shared base) from topology/domain-specific bias (residual experts).
+
+\subsection{Training Objective}
+We jointly optimize source and target losses:
+\begin{equation}
+\mathcal{L} = \mathcal{L}_{\text{tgt}} + \lambda(e)\,\mathcal{L}_{\text{src}},
+\end{equation}
+where $\lambda(e)$ is epoch-dependent source weight with annealing.
+Both losses use MSE in our final setup.
+
+\subsection{Implementation Notes}
+Our strongest and most stable setting in this round uses frozen HGAT encoder, enriched parasitic net features, and TCDR.
+Only lightweight residual experts are added on top of the shared head, so the architecture change is minimal and easy to integrate into existing training pipelines.

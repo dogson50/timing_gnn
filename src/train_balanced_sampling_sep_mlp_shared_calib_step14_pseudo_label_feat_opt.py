@@ -38,16 +38,18 @@ CKPT_R2_TIE_EPS_DEFAULT = 1e-4
 
 class PseudoLabelDataset(TorchDataset):
     """Dataset from pre-computed numpy arrays (for pseudo-labeled samples)."""
-    def __init__(self, x, y, cts):
+    def __init__(self, x, y, cts, from_pins, to_pins):
         self.x = x.astype(np.float32)
         self.y = y.astype(np.float32)
         self.cts = cts
+        self.from_pins = from_pins
+        self.to_pins = to_pins
 
     def __len__(self):
         return len(self.x)
 
     def __getitem__(self, i):
-        return th.from_numpy(self.x[i]), th.tensor(self.y[i]), self.cts[i]
+        return th.from_numpy(self.x[i]), th.tensor(self.y[i]), self.cts[i], self.from_pins[i], self.to_pins[i]
 
 
 class WeightedDataset(TorchDataset):
@@ -60,11 +62,11 @@ class WeightedDataset(TorchDataset):
         return len(self.base_ds)
 
     def __getitem__(self, i):
-        x, y, ct = self.base_ds[i]
-        return x, y, ct, self.sample_weight
+        x, y, ct, from_pin, to_pin = self.base_ds[i]
+        return x, y, ct, from_pin, to_pin, self.sample_weight
 
 
-def select_high_confidence_pseudo(x_unlabeled_norm, preds_norm, cts, x_labeled_norm,
+def select_high_confidence_pseudo(x_unlabeled_norm, preds_norm, cts, from_pins, to_pins, x_labeled_norm,
                                   keep_ratio=0.7, min_keep=16):
     """
     Keep pseudo-labels that are closest (in normalized feature space) to labeled
@@ -72,7 +74,10 @@ def select_high_confidence_pseudo(x_unlabeled_norm, preds_norm, cts, x_labeled_n
     """
     n_unlabeled = int(len(x_unlabeled_norm))
     if n_unlabeled == 0:
-        return x_unlabeled_norm, preds_norm, list(cts), np.array([], dtype=np.int64), np.array([], dtype=np.float32)
+        return (
+            x_unlabeled_norm, preds_norm, list(cts), list(from_pins), list(to_pins),
+            np.array([], dtype=np.int64), np.array([], dtype=np.float32),
+        )
 
     keep_ratio = float(np.clip(keep_ratio, 0.0, 1.0))
     keep_n = int(round(n_unlabeled * keep_ratio))
@@ -101,8 +106,12 @@ def select_high_confidence_pseudo(x_unlabeled_norm, preds_norm, cts, x_labeled_n
     x_sel = x_unlabeled_norm[idx]
     y_sel = preds_norm[idx]
     cts_arr = np.asarray(list(cts), dtype=object)
+    from_arr = np.asarray(list(from_pins), dtype=object)
+    to_arr = np.asarray(list(to_pins), dtype=object)
     cts_sel = cts_arr[idx].tolist()
-    return x_sel, y_sel, cts_sel, idx, dmin
+    from_sel = from_arr[idx].tolist()
+    to_sel = to_arr[idx].tolist()
+    return x_sel, y_sel, cts_sel, from_sel, to_sel, idx, dmin
 
 
 @th.no_grad()
@@ -115,14 +124,23 @@ def predict_unlabeled(enc, model, device, design_dim, df_unlabeled, x_mean, x_st
     x_raw = df[NUMERIC_COLS].fillna(0.0).astype(np.float32).values
     x_norm = (x_raw - x_mean) / x_std
     cts = df["cell_type"].astype(str).values
+    if "from_pin" in df.columns:
+        from_pins = df["from_pin"].fillna("").astype(str).values
+    else:
+        from_pins = np.array([""] * len(df), dtype=object)
+    if "to_pin" in df.columns:
+        to_pins = df["to_pin"].fillna("").astype(str).values
+    else:
+        to_pins = np.array([""] * len(df), dtype=object)
 
     x_t = th.from_numpy(x_norm).to(device)
     amp_on = bool(use_amp and device.type == "cuda")
     with th.cuda.amp.autocast(enabled=amp_on):
         zb = build_z_batch(list(cts), device, design_dim, z_dict=z_dict,
+            from_pins=list(from_pins), to_pins=list(to_pins),
             graph_cache=graph_cache, enc=enc, dedup=dedup)
         preds = model(x_t, zb, node="tgt")
-    return preds.cpu().numpy(), x_norm, cts
+    return preds.cpu().numpy(), x_norm, cts, from_pins, to_pins
 
 
 def _load_hgat_encoder_state_dict(enc, enc_state_dict):
@@ -238,12 +256,12 @@ def train_step14(options, seed):
     df_src_use = df_src if df_src is not None and len(df_src) > 0 else df_tgt_train
 
     def my_collate(batch):
-        xs, ys, cts = zip(*batch)
-        return th.stack(xs), th.stack(ys), cts
+        xs, ys, cts, from_pins, to_pins = zip(*batch)
+        return th.stack(xs), th.stack(ys), cts, from_pins, to_pins
 
     def my_collate_tgt(batch):
-        xs, ys, cts, ws = zip(*batch)
-        return th.stack(xs), th.stack(ys), cts, th.tensor(ws, dtype=th.float32)
+        xs, ys, cts, from_pins, to_pins, ws = zip(*batch)
+        return th.stack(xs), th.stack(ys), cts, from_pins, to_pins, th.tensor(ws, dtype=th.float32)
 
     num_workers = int(getattr(options, "num_workers", 4))
     dl_kwargs = {"num_workers": num_workers, "pin_memory": device.type == "cuda", "collate_fn": my_collate}
@@ -361,7 +379,7 @@ def train_step14(options, seed):
             src_w = compute_src_loss_weight(rnd * epochs_per_round + epoch, options)
 
             dl_src_iter = iter(dl_src)
-            for xb_tgt, yb_tgt, cts_tgt, wb_tgt in dl_tgt:
+            for xb_tgt, yb_tgt, cts_tgt, from_pins_tgt, to_pins_tgt, wb_tgt in dl_tgt:
                 xb_tgt = xb_tgt.to(device, non_blocking=True)
                 yb_tgt = yb_tgt.to(device, non_blocking=True)
                 wb_tgt = wb_tgt.to(device, non_blocking=True)
@@ -371,6 +389,7 @@ def train_step14(options, seed):
 
                 with th.cuda.amp.autocast(enabled=amp_on):
                     zb_tgt = build_z_batch(cts_tgt, device, design_dim, z_dict=z_dict_tgt,
+                        from_pins=from_pins_tgt, to_pins=to_pins_tgt,
                         graph_cache=graph_cache_tgt, enc=enc, dedup=options.dedup_z,
                         z_step_cache=z_step_cache, use_batched_graph_encode=True)
                     pred_tgt = model(xb_tgt, zb_tgt, node="tgt")
@@ -378,14 +397,15 @@ def train_step14(options, seed):
                     loss_tgt_sum = th.sum(loss_tgt_vec * wb_tgt.view(-1))
 
                 for _ in range(max(1, options.sample_45_num)):
-                    try: xb_src, yb_src, cts_src = next(dl_src_iter)
+                    try: xb_src, yb_src, cts_src, from_pins_src, to_pins_src = next(dl_src_iter)
                     except StopIteration:
                         dl_src_iter = iter(dl_src)
-                        xb_src, yb_src, cts_src = next(dl_src_iter)
+                        xb_src, yb_src, cts_src, from_pins_src, to_pins_src = next(dl_src_iter)
                     xb_src = xb_src.to(device, non_blocking=True)
                     yb_src = yb_src.to(device, non_blocking=True)
                     with th.cuda.amp.autocast(enabled=amp_on):
                         zb_src = build_z_batch(cts_src, device, design_dim, z_dict=z_dict_src,
+                            from_pins=from_pins_src, to_pins=to_pins_src,
                             graph_cache=graph_cache_src, enc=enc, dedup=options.dedup_z,
                             z_step_cache=z_step_cache, use_batched_graph_encode=True)
                         pred_src = model(xb_src, zb_src, node="src")
@@ -443,17 +463,17 @@ def train_step14(options, seed):
             _load_hgat_encoder_state_dict(enc, ckpt["enc"])
             model.load_state_dict(ckpt["model"])
 
-            preds_norm, x_norm, cts = predict_unlabeled(
+            preds_norm, x_norm, cts, from_pins, to_pins = predict_unlabeled(
                 enc, model, device, design_dim, df_tgt_unlabeled,
                 x_mean, x_std, y_mean, y_std,
                 z_dict=z_dict_tgt, graph_cache=graph_cache_tgt,
                 dedup=options.dedup_z, use_amp=use_amp)
 
-            x_pl, y_pl, cts_pl, keep_idx, dmin = select_high_confidence_pseudo(
-                x_norm, preds_norm, cts, ds_tgt.x,
+            x_pl, y_pl, cts_pl, from_pl, to_pl, keep_idx, dmin = select_high_confidence_pseudo(
+                x_norm, preds_norm, cts, from_pins, to_pins, ds_tgt.x,
                 keep_ratio=pseudo_keep_ratio, min_keep=pseudo_min_keep
             )
-            pseudo_label_data = (x_pl, y_pl, cts_pl)
+            pseudo_label_data = (x_pl, y_pl, cts_pl, from_pl, to_pl)
 
             if len(keep_idx) > 0 and len(dmin) > 0:
                 d_sorted = np.sort(dmin[keep_idx])

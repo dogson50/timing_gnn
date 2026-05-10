@@ -1,0 +1,169 @@
+﻿\documentclass[12pt,a4paper]{ctexart}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{xurl}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\title{实验部分（中文版）}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{实验}
+\label{sec:experiments_cn}
+
+\subsection{Overview}
+
+本节围绕三个问题展开：1）在当前数据协议下，TCDP 是否显著优于共享线性基线；2）TCDP 的关键增益来自哪些组件；3）这些结论在不同容量配置下是否稳定。
+
+\subsection{实验协议}
+
+所有结果统一使用以下目标域划分协议：
+\begin{itemize}[leftmargin=1.2em]
+  \item 划分方式：\texttt{table\_group}；
+  \item 比例：train:val$=1:5$；
+  \item 当前阶段不启用独立测试集。
+\end{itemize}
+对应数据文件为：
+\begin{center}
+\texttt{paper\_materials/data/dataset\_table\_group\_train\_val\_no\_test.pkl}
+\end{center}
+因此，本节定位为模型选择与机理验证，不对最终跨分布泛化作结论性表述。
+
+\subsection{实现细节}
+
+除被消融项外，训练设置固定如下：
+\begin{itemize}[leftmargin=1.2em]
+  \item 训练脚本：\texttt{src/train\_balanced\_sampling\_sep\_mlp\_shared\_calib\_step5a\_feat\_opt.py}；
+  \item 结构编码：冻结 HGAT 并缓存结构嵌入（\texttt{freeze\_hgat}）；
+  \item 优化器：AdamW；学习率调度：plateau；
+  \item \texttt{batch\_size=2048}，\texttt{learning\_rate=2e-3}，\texttt{weight\_decay=5e-5}；
+  \item \texttt{mlp\_dropout=0.2}，\texttt{z\_noise\_std=0.01}；
+  \item 早停：\texttt{patience=12}，\texttt{min\_delta=8e-4}；
+  \item 验证频率：\texttt{val\_eval\_interval=5}。
+\end{itemize}
+所有主表均基于 5 个随机种子：
+\[
+\{9294,9295,9296,9297,9298\}.
+\]
+
+\subsection{评价指标与统计口径}
+
+对每个 seed，读取日志中 \texttt{[Best]} 对应检查点（按验证损失选择），记录 \texttt{Train R\textsuperscript{2}@Best}、\texttt{Val R\textsuperscript{2}}、\texttt{Val Loss} 与 \texttt{Best Epoch}。回归指标定义为：
+\begin{equation}
+R^2 = 1-\frac{\sum_i (y_i-\hat{y}_i)^2}{\sum_i (y_i-\bar{y})^2},
+\end{equation}
+\begin{equation}
+\mathrm{MSE} = \frac{1}{N}\sum_i (y_i-\hat{y}_i)^2.
+\end{equation}
+跨 $K=5$ 个 seed 的聚合采用：
+\begin{equation}
+\mu(m)=\frac{1}{K}\sum_{k=1}^K m_k,\qquad
+\sigma(m)=\sqrt{\frac{1}{K-1}\sum_{k=1}^K (m_k-\mu(m))^2}.
+\end{equation}
+本文表格统一报告 mean$\pm$std。
+
+\subsection{核心模型对比}
+
+表~\ref{tab:core_compare_cn} 给出核心架构对比结果。
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{核心模型对比（\texttt{table\_group}，train:val$=1:5$，无测试集）。}
+\label{tab:core_compare_cn}
+\begin{tabular}{lcccc}
+\toprule
+方法 & NSeed & Train $R^2$ & Val $R^2$ & Val Loss \\
+\midrule
+Baseline(shared linear) & 5 & $0.9024\pm0.0086$ & $0.8726\pm0.0067$ & $0.1216\pm0.0064$ \\
+TCDP(16,96) & 5 & $0.9586\pm0.0085$ & $0.9065\pm0.0168$ & $0.0892\pm0.0161$ \\
+TCDP(32,64) & 5 & $0.9582\pm0.0216$ & $\mathbf{0.9234\pm0.0175}$ & $\mathbf{0.0731\pm0.0168}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+相较基线，TCDP(32,64) 的 Val $R^2$ 绝对提升 +0.0508，Val Loss 下降约 39.9\%。相较 TCDP(16,96)，TCDP(32,64) 的 Val $R^2$ 进一步提升 +0.0169，Val Loss 下降约 18.1\%。
+
+\subsection{One-factor 消融（固定 TCDP(32,64)）}
+
+采用 one-factor 设计：每次仅改动一个组件，其余配置固定。结果见表~\ref{tab:t32_ablation_cn}。
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\caption{TCDP(32,64) 的 one-factor 消融（每项 5 seeds）。}
+\label{tab:t32_ablation_cn}
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lcccc}
+\toprule
+变体 & NSeed & Train $R^2$ & Val $R^2$ & Val Loss \\
+\midrule
+A1 (MB-enrich on) & 5 & $0.9682\pm0.0087$ & $\mathbf{0.9298\pm0.0073}$ & $\mathbf{0.0670\pm0.0069}$ \\
+A2 (EnrichOff-auto) & 5 & $0.9682\pm0.0087$ & $\mathbf{0.9298\pm0.0073}$ & $\mathbf{0.0670\pm0.0069}$ \\
+A3 (ParasiticReplace) & 5 & $0.9694\pm0.0080$ & $0.9294\pm0.0084$ & $0.0675\pm0.0081$ \\
+A4 (DualMean) & 5 & $0.9582\pm0.0216$ & $0.9234\pm0.0175$ & $0.0731\pm0.0168$ \\
+A5 (MB + TopoOff) & 5 & $0.9006\pm0.0068$ & $0.8720\pm0.0034$ & $0.1222\pm0.0032$ \\
+\bottomrule
+\end{tabular}
+}
+\vspace{2pt}
+\raggedright
+\footnotesize
+A1: T32x64 + ModeBase(enrich\_on)；
+A2: T32x64 + EnrichOff(auto)；
+A3: T32x64 + ParasiticReplace；
+A4: T32x64 + DualMean；
+A5: T32x64 + ModeBase+TopoOff。
+\end{table}
+
+主要观察如下：
+\begin{enumerate}[leftmargin=1.4em]
+  \item 关闭拓扑专家（TopoOff）后性能显著下降（Val $R^2$ 降低约 0.0578），说明拓扑条件残差分支是主要收益来源；
+  \item \texttt{ParasiticReplace} 对主线配置未形成稳定优势，表现为中性到轻微退化；
+  \item \texttt{ModeBase(enrich\_on)} 与 \texttt{EnrichOff(auto)} 在当前实现路径下数值一致，应作为等价性对照而非两条独立增益路径。
+\end{enumerate}
+
+\subsection{补充消融（TCDP(16,96)）}
+
+为验证结论不依赖单一容量，进一步在 TCDP(16,96) 上进行同口径消融（表~\ref{tab:t16_ablation_cn}）。
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\caption{TCDP(16,96) 的补充 one-factor 消融（每项 5 seeds）。}
+\label{tab:t16_ablation_cn}
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lcccc}
+\toprule
+变体 & NSeed & Train $R^2$ & Val $R^2$ & Val Loss \\
+\midrule
+B1 (MB-enrich on) & 5 & $0.9548\pm0.0122$ & $\mathbf{0.9160\pm0.0139}$ & $\mathbf{0.0802\pm0.0132}$ \\
+B2 (EnrichOff-auto) & 5 & $0.9548\pm0.0122$ & $\mathbf{0.9160\pm0.0139}$ & $\mathbf{0.0802\pm0.0132}$ \\
+B3 (ParasiticReplace) & 5 & $0.9562\pm0.0118$ & $0.9151\pm0.0113$ & $0.0811\pm0.0108$ \\
+B4 (DualMean) & 5 & $0.9586\pm0.0085$ & $0.9065\pm0.0168$ & $0.0892\pm0.0161$ \\
+B5 (MB + TopologyOff) & 5 & $0.9006\pm0.0068$ & $0.8720\pm0.0034$ & $0.1222\pm0.0032$ \\
+\bottomrule
+\end{tabular}
+}
+\vspace{2pt}
+\raggedright
+\footnotesize
+B1: T16x96 + mode\_base(enrich\_on)；
+B2: T16x96 + enrich\_off(auto)；
+B3: T16x96 + parasitic\_replace；
+B4: T16x96 + dual\_readout(mean)；
+B5: T16x96 + mode\_base+topology\_off。
+\end{table}
+
+该补充实验与主线结论一致：TopologyOff 退化最大；ParasiticReplace 与 DualMean 未提供稳定增益。
+
+\end{document}
+

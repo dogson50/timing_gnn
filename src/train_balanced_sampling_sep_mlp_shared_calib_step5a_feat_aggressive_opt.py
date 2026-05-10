@@ -1,4 +1,4 @@
-r"""Balanced sampling with shared trunk + domain calibration heads (no disentanglement losses)."""
+r"""Aggressive variant: shared+private gated transfer regressor with domain calibration and topology residual."""
 
 import os
 import re
@@ -1010,7 +1010,6 @@ def apply_auto_transfer_by_sup(options, df_tgt_train, df_tgt_val, df_tgt_test):
         hard_src_fs = float(getattr(options, "auto_high_sup_src_final_scale", -1.0))
         hard_tgt_w = float(getattr(options, "auto_high_sup_tgt_w", -1.0))
         hard_anneal_end = int(getattr(options, "auto_high_sup_src_anneal_end", -1))
-        hard_enc_lr_scale = float(getattr(options, "auto_high_sup_enc_lr_scale", -1.0))
         if hard_src_w >= 0.0:
             options.loss_weight_45 = float(hard_src_w)
             hard_applied = True
@@ -1020,20 +1019,8 @@ def apply_auto_transfer_by_sup(options, df_tgt_train, df_tgt_val, df_tgt_test):
         if hard_tgt_w >= 0.0:
             options.target_loss_weight = float(hard_tgt_w)
             hard_applied = True
-        if hard_enc_lr_scale >= 0.0:
-            options.enc_lr_scale = float(hard_enc_lr_scale)
-            hard_applied = True
         if hard_anneal_end >= 0:
             options.src_loss_anneal_end = int(hard_anneal_end)
-            hard_applied = True
-        if bool(getattr(options, "auto_high_sup_disable_domain_calibration", False)):
-            options.disable_domain_calibration = True
-            hard_applied = True
-        if bool(getattr(options, "auto_high_sup_disable_topology_expert", False)):
-            options.use_topology_expert = False
-            hard_applied = True
-        if bool(getattr(options, "auto_high_sup_unfreeze_hgat", False)):
-            options.freeze_hgat = False
             hard_applied = True
 
     print(
@@ -1052,14 +1039,6 @@ def apply_auto_transfer_by_sup(options, df_tgt_train, df_tgt_val, df_tgt_test):
             f"[Info] Auto transfer hard-override active at sup_ratio={sup_ratio:.4f} "
             f"(cutoff={high_cutoff:.4f})"
         )
-        if bool(getattr(options, "disable_domain_calibration", False)):
-            print("[Info] Auto transfer hard-override: disable_domain_calibration=True")
-        if not bool(getattr(options, "use_topology_expert", True)):
-            print("[Info] Auto transfer hard-override: use_topology_expert=False")
-        if not bool(getattr(options, "freeze_hgat", True)):
-            print("[Info] Auto transfer hard-override: freeze_hgat=False")
-        if float(getattr(options, "auto_high_sup_enc_lr_scale", -1.0)) >= 0.0:
-            print(f"[Info] Auto transfer hard-override: enc_lr_scale={float(options.enc_lr_scale):.4f}")
 
 
 def build_target_group_sample_weights(df_tgt_train, options):
@@ -1236,12 +1215,36 @@ class SharedCalibRegressor(nn.Module):
         disable_domain_calibration=False,
     ):
         super().__init__()
+        feat_dim = in_dim + design_dim
         self.backbone = nn.Sequential(
-            nn.Linear(in_dim + design_dim, hid),
+            nn.Linear(feat_dim, hid),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(hid, hid),
             nn.ReLU(),
+        )
+        # Aggressive transfer branch: per-domain private backbones + gated fusion with shared features.
+        self.private_tgt = nn.Sequential(
+            nn.Linear(feat_dim, hid),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hid, hid),
+            nn.ReLU(),
+        )
+        self.private_src = nn.Sequential(
+            nn.Linear(feat_dim, hid),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hid, hid),
+            nn.ReLU(),
+        )
+        self.gate_tgt = nn.Sequential(
+            nn.Linear(hid, 1),
+            nn.Sigmoid(),
+        )
+        self.gate_src = nn.Sequential(
+            nn.Linear(hid, 1),
+            nn.Sigmoid(),
         )
         self.shared_head = nn.Linear(hid, 1)
         use_calib_mlp = bool(use_calib_mlp)
@@ -1266,6 +1269,7 @@ class SharedCalibRegressor(nn.Module):
         self.disable_domain_calibration = bool(disable_domain_calibration)
         self.use_topology_expert = bool(use_topology_expert)
         self.num_topologies = max(1, int(num_topologies))
+        self.has_private_gate = True
         if self.use_topology_expert:
             topo_dim = max(4, int(topology_expert_dim))
             topo_hid = max(8, int(topology_expert_hidden))
@@ -1281,25 +1285,36 @@ class SharedCalibRegressor(nn.Module):
                 nn.Linear(topo_hid, 1),
             )
 
+    def _fuse(self, h_shared, h_private, gate_net):
+        g = gate_net(h_shared).clamp(0.0, 1.0)
+        return g * h_shared + (1.0 - g) * h_private
+
     def forward(self, x, z, node="tgt", topo_ids=None):
         if z.dim() == 1:
             z = z.unsqueeze(0)
-        h = th.cat([x, z], dim=1)
-        h = self.backbone(h)
-        pred = self.shared_head(h).squeeze(-1)
+        hz = th.cat([x, z], dim=1)
+        h_shared = self.backbone(hz)
+        pred = self.shared_head(h_shared).squeeze(-1)
+
+        if node == "tgt":
+            h_private = self.private_tgt(hz)
+            h_fused = self._fuse(h_shared, h_private, self.gate_tgt)
+        elif node == "src":
+            h_private = self.private_src(hz)
+            h_fused = self._fuse(h_shared, h_private, self.gate_src)
+        else:
+            raise ValueError(f"Unknown node type: {node}")
+
         if not self.disable_domain_calibration:
             if node == "tgt":
-                pred = pred + self.calib_tgt(h).squeeze(-1)
+                pred = pred + self.calib_tgt(h_fused).squeeze(-1)
             elif node == "src":
-                pred = pred + self.calib_src(h).squeeze(-1)
-            else:
-                raise ValueError(f"Unknown node type: {node}")
-        elif node not in ("tgt", "src"):
-            raise ValueError(f"Unknown node type: {node}")
+                pred = pred + self.calib_src(h_fused).squeeze(-1)
+
         if self.use_topology_expert and topo_ids is not None:
-            topo_ids = topo_ids.to(device=h.device, dtype=th.long).clamp_(0, self.num_topologies - 1)
+            topo_ids = topo_ids.to(device=h_fused.device, dtype=th.long).clamp_(0, self.num_topologies - 1)
             topo_feat = self.topo_emb(topo_ids)
-            topo_in = th.cat([h, topo_feat], dim=1)
+            topo_in = th.cat([h_fused, topo_feat], dim=1)
             if node == "tgt":
                 pred = pred + self.topo_res_tgt(topo_in).squeeze(-1)
             elif node == "src":
@@ -1599,6 +1614,8 @@ def train_balanced_sep_mlp_shared_calib(options, seed):
         topology_expert_hidden=topology_expert_hidden,
         disable_domain_calibration=disable_domain_calibration,
     ).to(device)
+    if getattr(model, "has_private_gate", False):
+        print("[Info] Aggressive transfer regressor: shared/private gated fusion enabled.")
 
     maybe_load_hgat_encoder_checkpoint(enc, options, device)
     maybe_load_full_checkpoint(enc, model, options, device)

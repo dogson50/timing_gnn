@@ -1,0 +1,175 @@
+﻿\documentclass[10pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{xurl}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\title{Experimental Section}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Overview}
+
+This section evaluates the proposed transfer architecture under the current paper protocol and answers three questions:
+\begin{enumerate}[leftmargin=1.4em]
+  \item whether topology-conditioned transfer outperforms simpler shared prediction baselines;
+  \item which components in TCDP contribute stable gains under a fixed protocol;
+  \item whether observations are consistent across two topology-expert capacities.
+\end{enumerate}
+
+\subsection{Experimental Protocol}
+
+All experiments use the same target-domain split protocol:
+\begin{itemize}[leftmargin=1.2em]
+  \item split mode: \texttt{table\_group},
+  \item ratio: train:val$=1:5$,
+  \item no independent test split at this stage.
+\end{itemize}
+The dataset is
+\path{paper_materials/data/dataset_table_group_train_val_no_test.pkl}.
+Therefore, this section focuses on model selection and mechanism validation under train/val evidence.
+
+\subsection{Implementation Details}
+
+Unless explicitly ablated, the training setup is fixed:
+\begin{itemize}[leftmargin=1.2em]
+  \item script: \path{src/train_balanced_sampling_sep_mlp_shared_calib_step5a_feat_opt.py},
+  \item frozen HGAT with cached structural embeddings (\texttt{freeze\_hgat}),
+  \item AdamW optimizer with plateau LR scheduler,
+  \item batch size 2048, learning rate $2\times10^{-3}$, weight decay $5\times10^{-5}$,
+  \item \texttt{mlp\_dropout=0.2}, \texttt{z\_noise\_std=0.01},
+  \item early stop: patience 12, min delta $8\times10^{-4}$,
+  \item validation every 5 epochs.
+\end{itemize}
+All reported tables aggregate five seeds:
+\[
+\{9294,9295,9296,9297,9298\}.
+\]
+
+\subsection{Metrics and Aggregation}
+
+For each seed, we parse the \texttt{[Best]} checkpoint selected by validation loss and record
+\texttt{Train R\textsuperscript{2}@Best}, \texttt{Val R\textsuperscript{2}}, and \texttt{Best Epoch}.
+The primary metric is
+\begin{equation}
+R^2 = 1-\frac{\sum_{i}(y_i-\hat{y}_i)^2}{\sum_{i}(y_i-\bar{y})^2},
+\end{equation}
+Across $K=5$ seeds, each metric $m$ is summarized as
+\begin{equation}
+\mu(m)=\frac{1}{K}\sum_{k=1}^K m_k,\qquad
+\sigma(m)=\sqrt{\frac{1}{K-1}\sum_{k=1}^K (m_k-\mu(m))^2}.
+\end{equation}
+
+\subsection{Core Model Comparison}
+
+Table~\ref{tab:core_compare_en} reports the core architecture comparison.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Core comparison under \texttt{table\_group}, train:val$=1:5$ (no test split).}
+\label{tab:core_compare_en}
+\begin{tabular}{lccc}
+\toprule
+Method & NSeed & Train $R^2$ & Val $R^2$ \\
+\midrule
+Baseline(shared linear) & 5 & $0.9024\pm0.0086$ & $0.8726\pm0.0067$ \\
+TCDP(16,96) & 5 & $0.9586\pm0.0085$ & $0.9065\pm0.0168$ \\
+TCDP(32,64) & 5 & $0.9582\pm0.0216$ & $\mathbf{0.9234\pm0.0175}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Compared with the shared-linear baseline, TCDP(32,64) improves Val $R^2$ by +0.0508
+Compared with TCDP(16,96), TCDP(32,64) further improves Val $R^2$ by +0.0169.
+
+\subsection{One-Factor Ablation on TCDP(32,64)}
+
+Under a one-factor protocol, we modify exactly one component while keeping all other settings fixed.
+Results are listed in Table~\ref{tab:t32_ablation_en}.
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\caption{One-factor ablation on TCDP(32,64) (5 seeds each).}
+\label{tab:t32_ablation_en}
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lccc}
+\toprule
+Variant & NSeed & Train $R^2$ & Val $R^2$ \\
+\midrule
+A1 (MB-enrich on) & 5 & $0.9682\pm0.0087$ & $\mathbf{0.9298\pm0.0073}$ \\
+A2 (EnrichOff-auto) & 5 & $0.9682\pm0.0087$ & $\mathbf{0.9298\pm0.0073}$ \\
+A3 (ParasiticReplace) & 5 & $0.9694\pm0.0080$ & $0.9294\pm0.0084$ \\
+A4 (DualMean) & 5 & $0.9582\pm0.0216$ & $0.9234\pm0.0175$ \\
+A5 (MB + TopoOff) & 5 & $0.9006\pm0.0068$ & $0.8720\pm0.0034$ \\
+\bottomrule
+\end{tabular}
+}
+\vspace{2pt}
+\raggedright
+\footnotesize
+A1: T32x64 + ModeBase(enrich\_on).\\
+A2: T32x64 + EnrichOff(auto).\\
+A3: T32x64 + ParasiticReplace.\\
+A4: T32x64 + DualMean.\\
+A5: T32x64 + ModeBase+TopoOff.
+\end{table}
+
+Three observations are consistent:
+\begin{enumerate}[leftmargin=1.4em]
+  \item Turning topology expert off causes the largest collapse
+  ($\Delta R^2 \approx -0.0578$), validating topology-conditioned residual correction as the dominant gain source.
+  \item A3 is neutral-to-slightly negative versus the best ModeBase path.
+  \item A1 and A2 are numerically identical in this implementation path and should be treated as an equivalence-control pair.
+\end{enumerate}
+
+\subsection{Supplementary Ablation on TCDP(16,96)}
+
+To verify trend stability across capacity settings, Table~\ref{tab:t16_ablation_en}
+reports one-factor ablations for TCDP(16,96).
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\caption{Supplementary one-factor ablation on TCDP(16,96) (5 seeds each).}
+\label{tab:t16_ablation_en}
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lccc}
+\toprule
+Variant & NSeed & Train $R^2$ & Val $R^2$ \\
+\midrule
+B1 (MB-enrich on) & 5 & $0.9548\pm0.0122$ & $\mathbf{0.9160\pm0.0139}$ \\
+B2 (EnrichOff-auto) & 5 & $0.9548\pm0.0122$ & $\mathbf{0.9160\pm0.0139}$ \\
+B3 (ParasiticReplace) & 5 & $0.9562\pm0.0118$ & $0.9151\pm0.0113$ \\
+B4 (DualMean) & 5 & $0.9586\pm0.0085$ & $0.9065\pm0.0168$ \\
+B5 (MB + TopologyOff) & 5 & $0.9006\pm0.0068$ & $0.8720\pm0.0034$ \\
+\bottomrule
+\end{tabular}
+}
+\vspace{2pt}
+\raggedright
+\footnotesize
+B1: T16x96 + mode\_base(enrich\_on).\\
+B2: T16x96 + enrich\_off(auto).\\
+B3: T16x96 + parasitic\_replace.\\
+B4: T16x96 + dual\_readout(mean).\\
+B5: T16x96 + mode\_base+topology\_off.
+\end{table}
+
+The same pattern remains: topology-off gives the strongest degradation,
+while parasitic replacement and dual-readout do not provide stable improvements.
+
+\end{document}
+

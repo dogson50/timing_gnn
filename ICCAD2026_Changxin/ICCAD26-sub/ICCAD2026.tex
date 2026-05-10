@@ -1,0 +1,79 @@
+\documentclass[sigconf]{acmart}
+
+% ================= 隐藏初稿不需要的 ACM 占位信息 =================
+\settopmatter{printacmref=false} % 隐藏摘要下方的 ACM Reference Format
+\renewcommand\footnotetextcopyrightpermission[1]{} % 隐藏第一页左下角的版权信息框（极其省空间）
+\pagestyle{plain} % 去掉页眉默认生成的短标题和会议名，保留底部页码
+% ===============================================================
+
+\input{setting-acm}
+\graphicspath{{./figs/}{../}}
+
+\usepackage{amsmath,amsfonts}
+% \usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+
+% ====== my local colors
+\definecolor{mygreen}{RGB}{211,237,194}    %D3EDC2
+\definecolor{myblue}{RGB}{177,199,221}     %B1C7DD
+\definecolor{myorange}{RGB}{235,200,141}   %EBC88D
+
+\begin{document}
+
+\title{
+    Cross-Technology-Node Timing Prediction for Standard-Cell Libraries via Heterogeneous Graph Learning and Transfer Learning
+}
+
+% ACM author block placeholder
+% \author{Siliang Fei}
+% \affiliation{%
+%   \institution{Southeast University}
+%   \city{Nanjing}
+%   \country{China}
+% }
+% \email{230259681@seu.edu.cn}
+
+% \author{Zi Wang}
+% \affiliation{%
+%   \institution{Southeast University}
+%   \city{Nanjing}
+%   \country{China}
+% }
+% \email{220256579@seu.edu.cn}
+
+% \author{Binwu Zhu}
+% \affiliation{%
+%   \institution{Southeast University}
+%   \city{Nanjing}
+%   \country{China}
+% }
+% \email{bwzhu@seu.edu.cn}
+
+% \author{Chun Yang}
+% \affiliation{%
+%   \institution{Southeast University}
+%   \city{Nanjing}
+%   \country{China}
+% }
+% \email{yangchun@seu.edu.cn}
+
+\input{doc/abstract}
+\maketitle
+\input{doc/intro}
+\pagestyle{empty}
+
+
+\input{doc/preliminary}
+\input{doc/method}
+\input{doc/result}
+\input{doc/conclusion}
+
+{
+     \small
+     \bibliographystyle{ACM-Reference-Format}
+     \bibliography{ICCAD26-sub/ref/all}
+}
+
+\end{document}

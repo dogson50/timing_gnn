@@ -1,0 +1,145 @@
+\documentclass[12pt,a4paper]{ctexart}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{xurl}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\title{第五次组会：TCDR 论文实验与消融阶段总结}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{本周工作概览}
+本周工作聚焦于论文实验部分的可复现实验整理与叙事收敛，核心内容如下：
+\begin{enumerate}
+  \item 统一实验协议为 \texttt{table\_group} 划分、train:val=1:5、无独立测试集；
+  \item 形成 TCDR 主线模型与 one-factor 消融结果表；
+  \item 完成中英文实验节文稿对齐（指标定义、统计口径、结果解释一致）；
+  \item 明确当前投稿前仍缺少的关键材料与下一步补齐计划。
+\end{enumerate}
+
+\section{论文核心算法：TCDR}
+当前论文主线算法为 \textbf{TCDR}（Topology-Conditioned Dual Residual）。其目标是在低资源跨工艺节点场景下，利用拓扑条件信息提升时序回归泛化能力。核心由三部分组成：
+\begin{enumerate}
+  \item \textbf{结构表示层}：基于 HGAT 的异构图编码，输出弧级结构嵌入；
+  \item \textbf{共享预测主干}：将数值特征与结构嵌入拼接后输入共享 MLP 回归主干；
+  \item \textbf{双残差校准}：域校准残差 + 拓扑条件残差（topology expert），用于跨域偏移修正。
+\end{enumerate}
+从当前实验看，\textbf{topology-conditioned 残差分支是主要增益来源}，而替换式寄生特征注入与双读出设置未带来稳定收益。
+
+\section{消融实验设置（详细版）}
+\subsection{统一实验协议}
+\begin{itemize}
+  \item 数据协议固定：\texttt{table\_group} + train:val=1:5；
+  \item 训练脚本固定：\texttt{train\_balanced\_sampling\_sep\_mlp\_shared\_calib\_step5a\_feat\_opt.py}；
+  \item 随机种子固定：9294--9298（5 seeds）；
+  \item 统计口径固定：记录每个 seed 的 \texttt{Best} 检查点，汇总 mean$\pm$std；
+  \item 对比指标固定：Train \(R^2\)、Val \(R^2\)（本轮不报告测试集）。
+\end{itemize}
+
+\subsection{one-factor 控制变量原则}
+one-factor 的核心是“\textbf{每次只改一个开关，其他全部不变}”。我们在两种容量 TCDR(32,64) 与 TCDR(16,96) 下分别执行同口径对照，避免“多项同时变化导致归因不清”。
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{l l X X}
+\toprule
+消融ID & 修改项 & 保持不变项 & 验证目标 \\
+\midrule
+A1/B1 & ModeBase(enrich\_on) & 数据协议、优化器、seed、训练轮次策略 & 作为当前主线参考配置 \\
+A2/B2 & EnrichOff(auto) & 同 A1/B1 & 检查 enrich 开关在当前实现路径是否产生独立增益 \\
+A3/B3 & ParasiticReplace & 同 A1/B1 & 验证寄生特征“替换式注入”是否优于主线路径 \\
+A4/B4 & DualMean & 同 A1/B1 & 验证双读出均值融合是否带来额外收益 \\
+A5/B5 & TopologyOff & 同 A1/B1 & 直接量化拓扑残差专家的贡献 \\
+\bottomrule
+\end{tabularx}
+\caption{消融设计矩阵：改动项与验证目标。}
+\end{table}
+
+\subsection{执行流程与判据}
+\begin{enumerate}
+  \item 在指定容量（32x64 或 16x96）上设定主线配置；
+  \item 仅切换一个消融开关，运行 5 seeds；
+  \item 逐 seed 解析 \texttt{[Best]} 行，提取 Train/Val 指标；
+  \item 汇总 mean$\pm$std，形成容量内横向对照；
+  \item 使用“\(\Delta\)Val \(R^2\) + 方差变化”联合判断是否属于稳定收益：
+  若均值提升但方差显著增大，仅记为“弱收益/不稳定”。
+\end{enumerate}
+
+\subsection{为什么要做双容量消融}
+只在单容量上做消融，容易把“容量特定现象”误判为“机制结论”。因此我们在 TCDR(32,64) 与 TCDR(16,96) 上重复相同消融，若趋势一致，结论可信度更高。
+
+\section{论文实验结果汇总（来自实验部分主表）}
+\subsection{核心模型对比}
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lccc}
+\toprule
+方法 & NSeed & Train $R^2$ (mean$\pm$std) & Val $R^2$ (mean$\pm$std) \\
+\midrule
+Baseline(shared linear) & 5 & 0.9024$\pm$0.0086 & 0.8726$\pm$0.0067 \\
+TCDR(16,96) & 5 & 0.9586$\pm$0.0085 & 0.9065$\pm$0.0168 \\
+TCDR(32,64) & 5 & \textbf{0.9582$\pm$0.0216} & \textbf{0.9234$\pm$0.0175} \\
+\bottomrule
+\end{tabular}
+\caption{核心模型对比（\texttt{table\_group}，train:val=1:5）。}
+\end{table}
+
+\subsection{one-factor 消融（节选）}
+\begin{table}[htbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{l c c c}
+\toprule
+设置（节选） & NSeed & Train $R^2$ (mean$\pm$std) & Val $R^2$ (mean$\pm$std) \\
+\midrule
+T32x64 + ModeBase(enrich\_on) & 5 & 0.9682$\pm$0.0087 & \textbf{0.9298$\pm$0.0073} \\
+T32x64 + ParasiticReplace & 5 & 0.9694$\pm$0.0080 & 0.9294$\pm$0.0084 \\
+T32x64 + DualMean & 5 & 0.9582$\pm$0.0216 & 0.9234$\pm$0.0175 \\
+T32x64 + ModeBase+TopoOff & 5 & 0.9006$\pm$0.0068 & 0.8720$\pm$0.0034 \\
+\midrule
+T16x96 + mode\_base(enrich\_on) & 5 & 0.9548$\pm$0.0122 & \textbf{0.9160$\pm$0.0139} \\
+T16x96 + parasitic\_replace & 5 & 0.9562$\pm$0.0118 & 0.9151$\pm$0.0113 \\
+T16x96 + dual\_readout(mean) & 5 & 0.9586$\pm$0.0085 & 0.9065$\pm$0.0168 \\
+T16x96 + mode\_base+topology\_off & 5 & 0.9006$\pm$0.0068 & 0.8720$\pm$0.0034 \\
+\bottomrule
+\end{tabularx}
+\caption{TCDR 两种容量设置下的 one-factor 消融结果节选。}
+\end{table}
+
+\section{结果分析}
+\begin{enumerate}
+  \item \textbf{主结论稳定}：TCDR(32,64) 在当前协议下优于 TCDR(16,96) 与共享线性基线；
+  \item \textbf{拓扑专家是主要收益源}：关闭 topology expert（TopoOff）后，Val \(R^2\) 大幅退化；
+  \item \textbf{寄生替换策略收益有限}：ParasiticReplace 相比主线仅小幅波动，未呈现稳定优势；
+  \item \textbf{双读出并非必要}：DualMean 未优于最优主线，且波动更大；
+  \item \textbf{A1/B1 与 A2/B2 等价现象}：说明 enrich 开关在当前实现路径中落到同一有效配置，属于“等价对照”，应避免在论文中误写成双重增益。
+\end{enumerate}
+
+\section{当前缺口与下一步计划（按投稿需求）}
+若要从“实验草稿”走向“论文定稿”，当前仍缺少以下关键材料（按导师要求，本轮不展开独立测试集条目）：
+\begin{enumerate}
+  \item \textbf{与外部方法或更强 baseline 的公平对比}：补齐同协议下的公开方法/强基线；
+  \item \textbf{显著性统计}：基于 seed 配对检验（如配对 t 检验/非参数检验）报告显著性；
+  \item \textbf{误差分层可视化}：按 cell type / table group 分层的误差分布与失败案例分析；
+  \item \textbf{算法架构图尚未完成}：需补充可投稿的 TCDR 结构总图（输入特征、HGAT 编码、双残差路径、损失项与训练流）。
+\end{enumerate}
+
+\section{下周执行清单}
+\begin{enumerate}
+  \item 完成 TCDR 算法架构图绘制并接入论文；
+  \item 追加至少 1 组外部/强基线复现实验并纳入主表；
+  \item 输出显著性统计附表与误差分层可视化图；
+  \item 完成实验节最终定稿（中英文一致）。
+\end{enumerate}
+
+\end{document}

@@ -28,6 +28,29 @@ def get_options(args=None):
                         help="use learned node-type attention when fusing HGAT type summaries")
     parser.add_argument("--hgat_l2_norm", action="store_true",
                         help="apply L2 normalization on the final HGAT embedding")
+    parser.add_argument("--enrich_parasitic_net_feat", action="store_true",
+                        help="use parasitic-strength-aware NET feature in HGAT rich graph builder")
+    parser.add_argument("--hgat_net_feat_mode", type=str, default="auto",
+                        choices=["auto", "base", "parasitic_replace", "parasitic_append", "parasitic_append_split"],
+                        help="HGAT rich NET feature mode: auto=legacy behavior; base=use is_internal;"
+                             " parasitic_replace=replace is_internal with parasitic strength;"
+                             " parasitic_append=keep is_internal and append parasitic strength;"
+                             " parasitic_append_split=append cap-strength and res-strength separately")
+    parser.add_argument("--hgat_par_cap_weight", type=float, default=0.5,
+                        help="when using parasitic strength mix, cap weight in [0,1] (res weight = 1-cap)")
+    parser.add_argument("--hgat_rich_include_body", action="store_true",
+                        help="for rich HGAT graph, include body-terminal edges in sd_to/back_sd relations")
+    parser.add_argument("--hgat_dual_readout", action="store_true",
+                        help="enable dual HGAT readout: global + arc-focused branch")
+    parser.add_argument("--hgat_dual_merge", type=str, default="concat",
+                        choices=["concat", "mean"],
+                        help="merge mode for dual HGAT readout: concat or mean")
+    parser.add_argument("--use_topology_expert", action="store_true",
+                        help="enable lightweight topology expert residual head")
+    parser.add_argument("--topology_expert_dim", type=int, default=16,
+                        help="embedding dim for topology expert")
+    parser.add_argument("--topology_expert_hidden", type=int, default=64,
+                        help="hidden dim for topology expert residual head")
     parser.add_argument("--z_noise_std", type=float, default=0.0,
                         help="std of Gaussian noise added to HGAT z during training only")
     parser.add_argument("--use_arc_cond", action="store_true",
@@ -61,7 +84,15 @@ def get_options(args=None):
                         help="Number of pretrain epochs (0 = half of num_epoch)")
     parser.add_argument("--gcn_dropout", type=float, help='dropout rate for GNN layers. Type: float', default=0)
     parser.add_argument("--mlp_dropout", type=float, help='dropout rate for mlp. Type: float', default=0)
+    parser.add_argument("--use_calib_mlp", action="store_true",
+                        help="use 2-layer MLP heads for domain calibration branches")
+    parser.add_argument("--calib_mlp_hid", type=int, default=0,
+                        help="hidden dim for calibration MLP heads (<=0 means use backbone hidden dim)")
+    parser.add_argument("--calib_mlp_dropout", type=float, default=-1.0,
+                        help="dropout for calibration MLP heads (<0 means follow mlp_dropout)")
     parser.add_argument("--weight_decay", type=float, help='weight decay. Type: float', default=0)
+    parser.add_argument("--grad_clip_norm", type=float, default=0.0,
+                        help="global grad clip max norm (<=0 to disable)")
     parser.add_argument("--model_saving_dir", type=str, help='the directory to save the trained model. Type: str',
                         default='../models/asap7-designs')
     parser.add_argument("--preprocess",
@@ -114,12 +145,53 @@ def get_options(args=None):
                         help='number of source-domain batches per target batch')
     parser.add_argument('--loss_weight_45', type=float, default=1.0,
                         help='weight for source-domain loss in balanced training')
+    parser.add_argument('--target_loss_weight', type=float, default=1.0,
+                        help='weight for target-domain loss in balanced training')
     parser.add_argument('--src_loss_anneal_start', type=int, default=-1,
                         help='epoch (1-based) to start annealing source loss weight; <0 disables')
     parser.add_argument('--src_loss_anneal_end', type=int, default=-1,
                         help='epoch (1-based) to end annealing source loss weight; <0 disables')
     parser.add_argument('--src_loss_final_scale', type=float, default=1.0,
                         help='final scale on loss_weight_45 after annealing (e.g., 0.3)')
+    parser.add_argument('--auto_transfer_by_sup', action='store_true',
+                        help='auto-tune target/source loss weights by target supervision ratio (from dataset name/meta)')
+    parser.add_argument('--auto_sup_low', type=float, default=0.01,
+                        help='low supervision ratio anchor for auto transfer tuning')
+    parser.add_argument('--auto_sup_high', type=float, default=0.20,
+                        help='high supervision ratio anchor for auto transfer tuning')
+    parser.add_argument('--auto_src_w_low', type=float, default=1.0,
+                        help='source loss base weight when supervision is low (<=auto_sup_low)')
+    parser.add_argument('--auto_src_w_high', type=float, default=0.35,
+                        help='source loss base weight when supervision is high (>=auto_sup_high)')
+    parser.add_argument('--auto_src_final_scale_low', type=float, default=0.70,
+                        help='src_loss_final_scale when supervision is low')
+    parser.add_argument('--auto_src_final_scale_high', type=float, default=0.25,
+                        help='src_loss_final_scale when supervision is high')
+    parser.add_argument('--auto_tgt_w_low', type=float, default=1.20,
+                        help='target loss weight when supervision is low')
+    parser.add_argument('--auto_tgt_w_high', type=float, default=1.00,
+                        help='target loss weight when supervision is high')
+    parser.add_argument('--auto_sup_curve_power', type=float, default=1.0,
+                        help='nonlinear power on normalized supervision ratio in auto transfer; '
+                             '1.0=linear, >1 keeps low-sup closer to low-anchor, <1 amplifies high-anchor trend')
+    parser.add_argument('--auto_high_sup_cutoff', type=float, default=-1.0,
+                        help='if >=0 and supervision ratio >= cutoff, enable hard override for auto transfer params')
+    parser.add_argument('--auto_high_sup_src_w', type=float, default=-1.0,
+                        help='hard override for loss_weight_45 at high supervision cutoff (negative disables)')
+    parser.add_argument('--auto_high_sup_src_final_scale', type=float, default=-1.0,
+                        help='hard override for src_loss_final_scale at high supervision cutoff (negative disables)')
+    parser.add_argument('--auto_high_sup_tgt_w', type=float, default=-1.0,
+                        help='hard override for target_loss_weight at high supervision cutoff (negative disables)')
+    parser.add_argument('--auto_high_sup_src_anneal_end', type=int, default=-1,
+                        help='hard override for src_loss_anneal_end at high supervision cutoff (<0 keeps original)')
+    parser.add_argument('--auto_high_sup_disable_domain_calibration', action='store_true',
+                        help='at high supervision cutoff, force disable_domain_calibration=True')
+    parser.add_argument('--auto_high_sup_disable_topology_expert', action='store_true',
+                        help='at high supervision cutoff, force use_topology_expert=False')
+    parser.add_argument('--auto_high_sup_unfreeze_hgat', action='store_true',
+                        help='at high supervision cutoff, force freeze_hgat=False')
+    parser.add_argument('--auto_high_sup_enc_lr_scale', type=float, default=-1.0,
+                        help='hard override for enc_lr_scale at high supervision cutoff (negative disables)')
     parser.add_argument('--early_stop_patience', type=int, default=0,
                         help='early stop patience on val_r2 (0 disables early stop)')
     parser.add_argument('--early_stop_min_delta', type=float, default=0.0,
@@ -149,8 +221,42 @@ def get_options(args=None):
                         help='DataLoader persistent workers flag (1 enable, 0 disable)')
     parser.add_argument('--val_eval_interval', type=int, default=1,
                         help='run validation every N epochs')
+    parser.add_argument('--epoch_log_interval', type=int, default=1,
+                        help='print training log every N epochs (validation/test logs are always printed)')
+    parser.add_argument('--skip_train_r2', action='store_true',
+                        help='skip train R2 accumulation/computation to reduce runtime overhead')
+    parser.add_argument('--fast_eval_loss_only', action='store_true',
+                        help='during training validation, compute only val loss for checkpoint/early-stop; '
+                             'full val metrics are computed once at the end on ckpt_best')
     parser.add_argument('--test_eval_interval', type=int, default=50,
                         help='run test evaluation every N epochs')
+    parser.add_argument('--skip_test_eval', action='store_true',
+                        help='disable periodic/final test evaluation in training scripts')
+    parser.add_argument('--disable_graph_feature', action='store_true',
+                        help='disable graph embedding z and use zeros as graph feature')
+    parser.add_argument('--disable_domain_calibration', action='store_true',
+                        help='disable domain calibration heads; keep only shared head (+ optional topology residual)')
+    parser.add_argument('--init_full_ckpt_path', type=str, default=None,
+                        help='optional full checkpoint path for initializing both encoder and regressor')
+    parser.add_argument('--tgt_group_reweight', action='store_true',
+                        help='enable target-domain group-aware sample reweighting in training loss')
+    parser.add_argument('--tgt_group_reweight_col', type=str, default='group_id',
+                        help='column name used for target group reweighting (e.g., group_id/topology_group)')
+    parser.add_argument('--tgt_group_reweight_power', type=float, default=0.5,
+                        help='inverse-frequency power for target group reweighting; 0 disables effect')
+    parser.add_argument('--tgt_group_reweight_min', type=float, default=0.2,
+                        help='minimum clipping factor for target group reweighting')
+    parser.add_argument('--tgt_group_reweight_max', type=float, default=3.0,
+                        help='maximum clipping factor for target group reweighting')
+    # pseudo-label self-training (used by step13/step14-like scripts)
+    parser.add_argument('--pseudo_keep_ratio', type=float, default=1.0,
+                        help='ratio of unlabeled target samples kept as pseudo labels in each round (0~1]')
+    parser.add_argument('--pseudo_min_keep', type=int, default=0,
+                        help='minimum number of pseudo-labeled samples kept per round')
+    parser.add_argument('--pseudo_loss_weight', type=float, default=1.0,
+                        help='loss weight for pseudo-labeled target batch')
+    parser.add_argument('--pseudo_num_rounds', type=int, default=3,
+                        help='number of self-training rounds for pseudo-label scripts')
     # disentangle and alignment
     parser.add_argument('--node_feat_dim', type=int, default=128)
     parser.add_argument('--con_temp', type=float, default=1.0)
@@ -196,16 +302,22 @@ def get_options(args=None):
                         help="ASAP7 SP root dir or file (for build_dataset)")
     parser.add_argument("--out_dir", type=str, default="../output",
                         help="Output dir for build_dataset")
-    parser.add_argument("--target_label_ratio", type=float, default=1,
-                        help="Ratio of labeled data in target train pool (for build_dataset)")
-    parser.add_argument("--tgt_split_ratios", type=float, nargs=3, default=[0.14, 0.14, 0.72],
-                        help="Target split ratios for train/val/test (for build_dataset)")
+    parser.add_argument("--target_label_ratio", type=float, default=1.0,
+                        help="Ratio of labeled data in target train pool (for build_dataset). "
+                             "Use 1.0 if you want the effective labeled target split to match tgt_split_ratios exactly.")
+    parser.add_argument("--tgt_split_ratios", type=float, nargs=3,
+                        default=[1.0 / 6.0, 1.0 / 6.0, 4.0 / 6.0],
+                        help="Target split ratios for train/val/test (for build_dataset). Default is 1:1:4.")
     parser.add_argument("--tgt_split_mode", type=str, default="random",
-                        choices=["cell_type", "random", "stratified", "table_group"],
-                        help="Target split mode: cell_type | random | stratified | table_group")
+                        choices=["cell_type", "random", "stratified", "table_group", "table_group_train_test",
+                                 "table_group_cover", "table_group_manual", "table_group_manual_train",
+                                 "table_group_manual_train_test", "table_group_manual_dense_train_test"],
+                        help="Target split mode: cell_type | random | stratified | table_group | table_group_cover")
     parser.add_argument("--split_seed", type=int, default=42,
                         help="Random seed for dataset splitting (for build_dataset)")
     parser.add_argument("--dataset_pkl_name", type=str, default="dataset.pkl",
                         help="dataset pkl filename (used by build_dataset and training)")
     options = parser.parse_args(args)
     return options
+
+

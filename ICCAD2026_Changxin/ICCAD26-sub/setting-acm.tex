@@ -1,0 +1,171 @@
+% =============================================================
+%         setting for ACM format paper (Modified from IEEE)
+% =============================================================
+
+\usepackage{blkarray}
+\usepackage{algpseudocode}
+\usepackage{algorithm}
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+\usepackage{graphicx}
+
+\usepackage[mathcal]{eucal}
+\usepackage{mathrsfs}
+\usepackage{booktabs}
+\usepackage{enumerate}
+\usepackage{multirow}
+\usepackage[subrefformat=parens,farskip=0pt,justification=centering]{subfig}
+\usepackage{color}
+
+\usepackage{comment}
+\usepackage{soul}
+\soulregister\ref7
+\soulregister\pageref7
+\usepackage{etoolbox}
+\usepackage{url}
+\usepackage{nth}
+\usepackage{bm}
+\usepackage{courier}
+\usepackage{balance}
+\usepackage{threeparttable}
+\usepackage{xcolor,colortbl}
+\usepackage{footnote}
+\usepackage{listings}
+\usepackage{setspace}
+\usepackage[inline]{enumitem}
+\usepackage{verbatim}
+
+\usepackage{tikz}
+\usetikzlibrary{patterns,snakes}
+\usetikzlibrary{positioning,calc,fit,decorations.pathmorphing,shapes.geometric, shapes.gates.logic.US, calc}
+\usetikzlibrary{arrows,arrows.meta,decorations.markings,shapes,shapes.arrows}
+\usetikzlibrary{decorations,decorations.pathreplacing}
+\usetikzlibrary{backgrounds}
+\usepackage{filecontents}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+\usepackage{scalefnt}
+\pgfplotsset{compat=newest}
+
+\usepackage{pifont}
+\usepackage{cleveref}
+\Crefformat{figure}{Fig.~#2#1#3}
+\Crefname{subfigure}{Fig.}{Figs.}
+\Crefname{figure}{Fig.}{Figs.}
+\Crefformat{table}{TABLE~#2#1#3}
+
+\usepackage[figuresright]{rotating}
+\iftrue
+\fi
+
+\definecolor{CUHKorange}{RGB}{244,106,18}
+\definecolor{CUHKblue}{RGB}{0,111,190}
+\definecolor{CUHKgreen}{RGB}{0,127,128}
+\definecolor{CUHKred}{RGB}{228,46,36}
+\definecolor{CUHKyellow}{RGB}{198,148,34}
+\definecolor{CUHKdark}{RGB}{114,44,114}
+\definecolor{CUHKmiddle}{RGB}{144,44,144}
+\definecolor{CUHKlight}{RGB}{167,44,167} 
+\definecolor{CUHKpurple}{RGB}{117,15,109}
+\definecolor{CUHKgold}{RGB}{221,163,0}
+\definecolor{CUHKribbon}{RGB}{244,223,176}
+\definecolor{CUHKblack}{RGB}{34,24,21}
+
+\newcommand{\etal}{\textit{et al.}}
+\newcommand{\calH}{\mathcal{H}}
+\newcommand{\calL}{\mathcal{L}}
+\newcommand{\calN}{\mathcal{N}}
+\newcommand{\calO}{\mathcal{O}}
+\newcommand{\calP}{\mathcal{P}}
+\newcommand{\calQ}{\mathcal{Q}}
+\newcommand{\calV}{\mathcal{V}}
+\newcommand{\calKL}{\mathcal{KL}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\tool}[1]{$\mathsf{#1}$}
+\renewcommand{\bf}[1]{\textbf{#1}}
+\renewcommand{\tt}[1]{\texttt{#1}}
+\newcommand{\tensor}[1]{\mathcal{#1}}
+\renewcommand{\vec}[1]{\boldsymbol{#1}}
+\newcommand{\abs}[1]{\ensuremath{\left\lvert #1\right\rvert}}
+\newcommand{\mathbbm}[1]{\text{\usefont{U}{bbm}{m}{n}#1}}
+\newcommand{\minisection}[1]{\vspace{.1in}\noindent{\textbf{#1}}.}
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\argmax}{argmax}
+\newcommand\blfootnote[1]{
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
+\newcommand*\bcircled[1]{
+    \tikz[baseline=(char.base)]{
+        \node[shape=circle,fill,inner sep=1pt] (char) {\textcolor{white}{#1}};
+    }
+}
+\newcommand*\wcircled[1]{
+    \Large{\textcircled{\scriptsize{\textbf{#1}}}}
+}
+
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+\newenvironment{myblock}[1]{%
+    \tcolorbox[beamer,%
+    noparskip,breakable,
+    colback=white,colframe=CUHKmiddle,%
+    colbacklower=white,%
+    title=#1]}%
+    {\endtcolorbox}
+\newenvironment{commentblock}[1]{%
+    \tcolorbox[beamer,%
+    noparskip,breakable,
+    colback=white,colframe=CUHKmiddle,%
+    colbacklower=white,%
+    title=Comment #1]}%
+    {\endtcolorbox}
+
+\newtheorem{myproblem}{\textbf{Problem}}
+\newtheorem{mydefinition}{\textbf{Definition}}
+\newtheorem{mytheorem}{\textbf{Theorem}}
+\newtheorem{mycorollary}{\textbf{Corollary}}
+\newtheorem{mylemma}{\textbf{Lemma}}
+\newtheorem{myclaim}{\textbf{Claim}}
+\newtheorem{myapplication}{\textbf{Application}}
+\newtheorem{myexample}{\textbf{Example}}
+\newtheorem{myconjecture}{\textbf{Conjecture}}
+\newtheorem{myassumption}{Assumption}
+\newtheorem{myprop}{Property}
+
+\crefname{mytheorem}{Theorem}{Theorems}
+\crefname{mylemma}{Lemma}{Lemmas}
+\crefname{myclaim}{Claim}{Claims}
+\crefname{myproperty}{Property}{Properties}
+\crefname{mycorollary}{Corollary}{Corollaries}
+
+\algrenewcommand\textproc{\texttt}
+\newcommand{\tabincell}[2]{\begin{tabular}{@{}#1@{}}#2\end{tabular}}
+
+\makeatletter
+\let\OldStatex\Statex
+\renewcommand{\Statex}[1][3]{%
+  \setlength\@tempdima{\algorithmicindent}%
+  \OldStatex\hskip\dimexpr#1\@tempdima\relax
+}
+\makeatother
+
+\RequirePackage[normalem]{ulem} 
+\RequirePackage{color}\definecolor{RED}{rgb}{1,0,0}\definecolor{BLUE}{rgb}{0,0,1} 
+\providecommand{\DIFadd}[1]{{\protect\color{blue}{#1}}}                           
+\providecommand{\DIFdel}[1]{{\protect\color{red}\sout{#1}}}                       
+\providecommand{\DIFaddbegin}{}                                                   
+\providecommand{\DIFaddend}{}                                                     
+\providecommand{\DIFdelbegin}{}                                                   
+\providecommand{\DIFdelend}{}                                                     
+\providecommand{\DIFaddFL}[1]{\DIFadd{#1}}                                        
+\providecommand{\DIFdelFL}[1]{\DIFdel{#1}}                                        
+\providecommand{\DIFaddbeginFL}{}                                                 
+\providecommand{\DIFaddendFL}{}                                                   
+\providecommand{\DIFdelbeginFL}{}                                                 
+\providecommand{\DIFdelendFL}{}                                                   
+
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+\newcommand{\revise}[1]{\DIFadd{#1}}
