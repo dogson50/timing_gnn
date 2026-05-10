@@ -1,0 +1,3 @@
+method,n_seed,val_r2_mean,val_r2_std,val_mae_mean,val_mae_std,val_mape_mean,val_mape_std,delta_r2_vs_tcdp,delta_mae_vs_tcdp,delta_mape_vs_tcdp
+gated_fusion_tcdp,5,0.909620,0.013404,15.572817,1.599086,29.141400,4.496360,-0.023020,2.448153,3.659600
+tcdp_joint_reference,5,0.932640,0.006819,13.124664,0.581621,25.481800,0.870223,,,

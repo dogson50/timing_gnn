@@ -53,6 +53,15 @@ def get_options(args=None):
                         help="hidden dim for topology expert residual head")
     parser.add_argument("--z_noise_std", type=float, default=0.0,
                         help="std of Gaussian noise added to HGAT z during training only")
+    parser.add_argument("--use_gated_fusion", action="store_true",
+                        help="enable gated numeric/graph feature fusion in gated-fusion training scripts")
+    parser.add_argument("--fusion_gate_hidden", type=int, default=0,
+                        help="hidden dim of gated fusion network; 0 follows hidden_dim")
+    parser.add_argument("--fusion_gate_mode", type=str, default="channel",
+                        choices=["scalar", "channel"],
+                        help="gated fusion gate granularity: scalar per sample or channel-wise")
+    parser.add_argument("--fusion_gate_dropout", type=float, default=-1.0,
+                        help="dropout in gated fusion branches; negative follows mlp_dropout")
     parser.add_argument("--use_arc_cond", action="store_true",
                         help="enable arc conditioning in MLP heads using from_pin/to_pin/pol embeddings")
     parser.add_argument("--pin_emb_dim", type=int, default=8,
