@@ -48,10 +48,13 @@ rawdata-130/
 *.run.xml
 *.synctex.gz
 *.toc
+*.xdv
+parser.out
 
 # Temp scripts / accidental files
 tmp_parse_logs.py
 tmp_parse_logs2.py
+tmp_*.py
 
 # Keep source code and docs
 !src/**/*.py
